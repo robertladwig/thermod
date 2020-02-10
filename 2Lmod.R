@@ -3,6 +3,7 @@ library(deSolve)
 library(gridExtra)
 library(ggplot2)
 library(RColorBrewer)
+library(thermod)
 
 setwd(dirname(rstudioapi::getSourceEditorContext()$path))
 
