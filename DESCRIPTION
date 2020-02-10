@@ -1,0 +1,19 @@
+Package: thermod
+Type: Package
+Title: Simplified water temperature model
+Version: 0.1.0
+URL: https://github.com/robertladwig/thermod
+Author: Authors@R: c( person("Robert", "Ladwig", role = c("aut","cre"),
+    email = "qgao38@wisc.edu"),
+    person("Lynette", "Gao", role = "aut",
+    email = "qgao38@wisc.edu"), 
+    person("Paul", "Hanson", role = "aut", 
+    email = "pchanson@wisc.edu"),
+    person("Austin", "Delany", role = "aut",
+    email = "addelany@wisc.edu", role = "aut"))
+Maintainer: The package maintainer <yourself@somewhere.net>
+Description: Runs dynamic two-layer temperature model for physics-guided machine learning.
+License: CCO
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 7.0.2
