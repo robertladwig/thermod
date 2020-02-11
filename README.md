@@ -134,4 +134,4 @@ g5 <- grid.arrange(g1, g2, g3, g4, ncol =1);g5
 ggsave(file='2L_visual_result.png', g5, dpi = 300,width = 200,height = 220, units = 'mm')
 ```
 
-![](2L_visual_result.png)<!-- -->
+![](images/2L_visual_result.png)<!-- -->
