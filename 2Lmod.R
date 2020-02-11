@@ -24,15 +24,20 @@ TwoLayer <- function(t, y, parms){
   RH <- eair/esat *100 # relative humidity
   es <- 4.596 * exp((17.27 * y[1])/ (273.3+y[1]))
   # diffusion coefficient
-  Cd <- 0.00052 * (Uw(t))^(0.44)
-  shear <- 1.164/1000 * Cd * (Uw(t))^2
-  w0 <- sqrt(shear/rho)
-  E0  <- c * w0
-  
+  Cd <- 0.00052 * (vW(t))^(0.44)
+  shear <- 1.164/1000 * Cd * (vW(t))^2
+#  shear <- Uw(t)
   rho_e <- calc_dens(y[1])/1000
   rho_h <- calc_dens(y[2])/1000
+  w0 <- sqrt(shear/rho_e) # sqrt(shear/rho)
+  E0  <- c * w0
   Ri <- ((g/rho)*(abs(rho_e-rho_h)/10))/(w0/(10)^2)
-  dV <- (E0 / (1 + a * Ri)^(3/2))/(Ht/100) * (86400/10000)
+  if (rho_e > rho_h){
+    dV = 100
+  } else {
+    dV <- (E0 / (1 + a * Ri)^(3/2))/(Ht/100) * (86400/10000)
+  }
+  # dV <- (E0 / (1 + a * Ri)^(3/2))/(Ht/100) * (86400/10000)
   
   # epilimnion water temperature change per time unit
   dTe <-  Q / Ve * Tin -              # inflow heat
@@ -91,8 +96,8 @@ eps <- 0.97 # emissivity of water
 rho <- 0.9982 # density (g per cm3)
 cp <- 0.99 # specific heat (cal per gram per deg C)
 c1 <- 0.47 # Bowen's coefficient
-a <- 10e-1
-c <- 50
+a <- 7#10e-1
+c <- 9e4#25#50
 g <- 9.81
 
 parameters <- c(Ve, Vh, At, Ht, As, Tin, Q, Rl, Acoeff, sigma, eps, rho, cp, c1, a, c, g)
@@ -102,9 +107,9 @@ vto <- Et/(Ht/100) * (86400/10000) #*100 # heat change coefficient across thermo
 vt_mix <- 100 # high heat change coefficient during overturn and mixing events
 bound <- as.data.frame(cbind(bound, c(rep(vt_mix,3),rep(vto,6),rep(vt_mix,3))))
 
-colnames(bound) <- c('Month','Jsw','Tair','Dew','Uw','vt')
-bound$Uw <- 19.0 + 0.95 * (bound$Uw * 1000/3600)^2 # function to calculate wind shear stress (and transforming wind speed from km/h to m/s)
-
+colnames(bound) <- c('Month','Jsw','Tair','Dew','vW','vt')
+bound$Uw <- 19.0 + 0.95 * (bound$vW * 1000/3600)^2 # function to calculate wind shear stress (and transforming wind speed from km/h to m/s)
+bound$vW <- bound$vW * 1000/3600
 
 # boundary <- bound
 # boundary$Month <- seq(1, nrow(boundary),1)
@@ -130,6 +135,7 @@ Jsw <- approxfun(x = boundary$Month, y = boundary$Jsw, method = "linear", rule =
 Tair <- approxfun(x = boundary$Month, y = boundary$Tair, method = "linear", rule = 2)
 Dew <- approxfun(x = boundary$Month, y = boundary$Dew, method = "linear", rule = 2)
 Uw <- approxfun(x = boundary$Month, y = boundary$Uw, method = "linear", rule = 2)
+vW <- approxfun(x = boundary$Month, y = boundary$vW, method = "linear", rule = 2)
 vt <- approxfun(x = boundary$Month, y = boundary$vt, method = "linear", rule = 2)
 
 #times <- seq(from = 1, to = nrow(boundary), by = 1/30)
