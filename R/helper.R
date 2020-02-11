@@ -39,7 +39,27 @@ add_noise <- function(bc){
 #' @param parns matrix; Water temperatures (rows correspond to time, cols to depth)
 #' @return list of datetimes and depths
 #' @export
-TwoLayer <- function(t, y, parms){
+run_model <- function(bc, params, ini, times){
+  
+  Ve <- params[1]
+  Vh <- params[2]
+  At <- params[3]
+  Ht <- params[4]
+  As <- params[5]
+  Tin <- params[6]
+  Q <- params[7]
+  Rl <- params[8]
+  Acoeff <- params[9]
+  sigma <- params[10]
+  eps <- params[11]
+  rho <- params[12]
+  cp <- params[13]
+  c1 <- params[14]
+  a <- params[15]
+  c <- params[16]
+  g <- params[17]
+  
+  TwoLayer <- function(t, y, parms){
   eair <- (4.596 * exp((17.27 * Dew(t)) / (237.3 + Dew(t)))) # air vapor pressure
   esat <- 4.596 * exp((17.27 * Tair(t)) / (237.3 + Tair(t))) # saturation vapor pressure
   RH <- eair/esat *100 # relative humidity
@@ -58,7 +78,6 @@ TwoLayer <- function(t, y, parms){
   } else {
     dV <- (E0 / (1 + a * Ri)^(3/2))/(Ht/100) * (86400/10000)
   }
-  # dV <- (E0 / (1 + a * Ri)^(3/2))/(Ht/100) * (86400/10000)
   
   # epilimnion water temperature change per time unit
   dTe <-  Q / Ve * Tin -              # inflow heat
@@ -94,7 +113,19 @@ TwoLayer <- function(t, y, parms){
               quote = FALSE, row.names = FALSE, col.names = FALSE)
   
   return(list(c(dTe, dTh)))
+  }
+  
+  
+  # approximating all boundary conditions 
+  Jsw <- approxfun(x = bc$Month, y = bc$Jsw, method = "linear", rule = 2)
+  Tair <- approxfun(x = bc$Month, y = bc$Tair, method = "linear", rule = 2)
+  Dew <- approxfun(x = bc$Month, y = bc$Dew, method = "linear", rule = 2)
+  Uw <- approxfun(x = bc$Month, y = bc$Uw, method = "linear", rule = 2)
+  vW <- approxfun(x = bc$Month, y = bc$vW, method = "linear", rule = 2)
+  vt <- approxfun(x = bc$Month, y = bc$vt, method = "linear", rule = 2)
+
+  # runge-kutta 4th order
+  out <- ode(times = times, y = ini, func = TwoLayer, parms = params, method = 'rk4')
+  
+  return(out)
 }
-
-
-
