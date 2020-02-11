@@ -76,6 +76,7 @@ g1 <- ggplot(result) +
   geom_line(aes(x=(Time), y=WT_hyp, col='Bottom Layer')) +
   labs(x = 'Simulated Time', y = 'WT in deg C')  +
   theme_bw()+
+  guides(col=guide_legend(title="Layer")) +
   theme(legend.position="bottom")
 
 output <- read.table('output.txt')
@@ -103,8 +104,8 @@ g2 <- ggplot(output) +
   theme(legend.position="bottom")
 
 g3 <- ggplot(output) +
-  geom_line(aes(x = time,y = Ri, col = 'richardson')) +
-  geom_line(aes(x = time,y = entrain, col = 'entrainment')) +
+  geom_line(aes(x = time,y = Ri, col = 'Richardson')) +
+  geom_line(aes(x = time,y = entrain, col = 'Entrainment')) +
   scale_colour_brewer("Stability terms", palette="Set1") +
   labs(x = 'Simulated Time', y = 'Entrainment in cm2/s and Ri in [-]')  +
   theme_bw()+
