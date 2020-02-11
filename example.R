@@ -8,7 +8,7 @@ library(thermod)
 setwd(dirname(rstudioapi::getSourceEditorContext()$path))
 
 if (file.exists('output.txt')) 
-  #Delete file if it exists
+  # delete file if it exists
   file.remove('output.txt')
 
 # input data: month, shortwave radiation, air temperature, dew point temperature, wind speed
@@ -22,7 +22,6 @@ Vh <- 75000*1e6 # hypolimnion volume
 At <- 11000 *1e4 # thermocline area
 Ht <- 3 * 100 # thermocline thickness
 As <- 25000 * 1e4 # surface area
-# H <- As/Ve#Ve/As *100
 Tin <- 10 # inflow water temperature
 Q <- 7500 *1e6 # inflow discharge
 Rl <- 0.03 # reflection coefficient (generally small, 0.03)
@@ -32,9 +31,9 @@ eps <- 0.97 # emissivity of water
 rho <- 0.9982 # density (g per cm3)
 cp <- 0.99 # specific heat (cal per gram per deg C)
 c1 <- 0.47 # Bowen's coefficient
-a <- 7#10e-1
-c <- 9e4#25#50
-g <- 9.81
+a <- 7 # constant
+c <- 9e4 # empirical constant
+g <- 9.81 # gravity (m/s2)
 
 parameters <- c(Ve, Vh, At, Ht, As, Tin, Q, Rl, Acoeff, sigma, eps, rho, cp, c1, a, c, g)
 
@@ -48,10 +47,9 @@ bound$Uw <- 19.0 + 0.95 * (bound$vW * 1000/3600)^2 # function to calculate wind 
 bound$vW <- bound$vW * 1000/3600
 
 # boundary <- bound
-# boundary$Month <- seq(1, nrow(boundary),1)
 boundary <- rbind(bound[1,],bound)
 
-boundary <- rbind(boundary, boundary, boundary, boundary, boundary,
+boundary <- rbind(boundary, boundary, boundary, boundary, boundary, # running 10 years
                   boundary, boundary, boundary, boundary, boundary)
 
 boundary$Month <- cumsum(c(1,31,28,31,30,31,30,31,31,30,31,30,31, 31,31,28,31,30,31,30,31,31,30,31,30,31,
@@ -71,9 +69,6 @@ yini <- c(5,5) # initial water temperatures
 
 out <- run_model(bc = boundary, params = parameters, ini = yini, times = times)
 
-plot(out[,1], out[,2], col = 'red', main = paste('vt_mix =',vt_mix))
-lines(out[,1], out[,3], col = 'blue')
-
 result <- data.frame('Time' = out[,1],
                      'WT_epi' = out[,2], 'WT_hyp' = out[,3])
 g1 <- ggplot(result) +
@@ -84,7 +79,7 @@ g1 <- ggplot(result) +
   theme(legend.position="bottom")
 
 output <- read.table('output.txt')
-# qin, qout, mix_e, mix_h, sw, lw, water_lw, conv, evap
+
 output <- data.frame('qin'=output[,1],'qout'=output[,2],'mix_e'=output[,3],'mix_h'=output[,4],
                      'sw'=output[,5],'lw'=output[,6],'water_lw'=output[,7],'conv'=output[,8],
                      'evap'=output[,9], 'Rh' = output[,10],
@@ -126,11 +121,6 @@ g4 <- ggplot(boundary) +
   theme_bw()+
   theme(legend.position="bottom")
 
-#pdf('Simulation.pdf')
-grid.arrange(g1, g2, g3, g4, ncol =1)
-#dev.off()
 
-#pdf('Simulation.pdf')
-g5 <- grid.arrange(g1, g2, g3, g4, ncol =1)
+g5 <- grid.arrange(g1, g2, g3, g4, ncol =1);g5
 ggsave(file='2L_visual_result.png', g5, dpi = 300,width = 200,height = 220, units = 'mm')
-#dev.off()
