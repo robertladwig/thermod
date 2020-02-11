@@ -13,12 +13,9 @@ if (file.exists('output.txt'))
 
 heat.fluxes <-c()
 
-calc_dens <- function(wtemp){
-  dens = 999.842594 + (6.793952 * 10^-2 * wtemp) - (9.095290 * 10^-3 *wtemp^2) + (1.001685 * 10^-4 * wtemp^3) - (1.120083 * 10^-6* wtemp^4) + (6.536336 * 10^-9 * wtemp^5)
-  return(dens)
-}
 
-TwoLayer <- function(t, y, parms){
+
+ TwoLayer <- function(t, y, parms){
   eair <- (4.596 * exp((17.27 * Dew(t)) / (237.3 + Dew(t)))) # air vapor pressure
   esat <- 4.596 * exp((17.27 * Tair(t)) / (237.3 + Tair(t))) # saturation vapor pressure
   RH <- eair/esat *100 # relative humidity
@@ -128,7 +125,7 @@ boundary$Month <- cumsum(c(1,31,28,31,30,31,30,31,31,30,31,30,31, 31,31,28,31,30
                            31,31,28,31,30,31,30,31,31,30,31,30,31,
                            31,31,28,31,30,31,30,31,31,30,31,30,31))
 
-
+boundary <- add_noise(boundary)
 
 # approximating all boundary conditions 
 Jsw <- approxfun(x = boundary$Month, y = boundary$Jsw, method = "linear", rule = 2)
@@ -185,16 +182,26 @@ g3 <- ggplot(output) +
   geom_line(aes(x = time,y = Ri, col = 'richardson')) +
   geom_line(aes(x = time,y = entrain, col = 'entrainment')) +
   scale_colour_brewer("Energy terms", palette="Set1") +
-  labs(x = 'Simulated Time', y = 'entrainment in cm2/s and Ri in [-]')  +
+  labs(x = 'Simulated Time', y = 'Entrainment in cm2/s and Ri in [-]')  +
   theme_bw()+
   theme(legend.position="bottom")
 
+g4 <- ggplot(boundary) +
+  geom_line(aes(x = Month,y = scale(Jsw), col = 'Shortwave')) +
+  geom_line(aes(x = Month,y = scale(Tair), col = 'Airtemp')) +
+  geom_line(aes(x = Month,y = scale(Dew), col = 'Dew temperature')) +
+  geom_line(aes(x = Month,y = scale(vW), col = 'Wind velocity')) +
+  geom_line(aes(x = Month,y = scale(Uw), col = 'Wind shear stress')) +
+  scale_colour_brewer("Energy terms", palette="Set3") +
+  labs(x = 'Simulated Time', y = 'Scaled meteo. boundaries')  +
+  theme_bw()+
+  theme(legend.position="bottom")
 
 #pdf('Simulation.pdf')
-grid.arrange(g1, g2, g3, ncol =1)
+grid.arrange(g1, g2, g3, g4, ncol =1)
 #dev.off()
 
 #pdf('Simulation.pdf')
-g4 <- grid.arrange(g1, g2, g3, ncol =1)
-ggsave(file='2L_visual_result.png', g4, dpi = 300,width = 200,height = 220, units = 'mm')
+g5 <- grid.arrange(g1, g2, g3, g4, ncol =1)
+ggsave(file='2L_visual_result.png', g5, dpi = 300,width = 200,height = 220, units = 'mm')
 #dev.off()

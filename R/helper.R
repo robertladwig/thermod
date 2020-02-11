@@ -12,6 +12,23 @@ calc_dens <- function(wtemp){
   return(dens)
 }
 
+#' Add noise to boundary conditions
+#'
+#' Adds random noise to data.
+#'
+#' @param bc vector or matrix; meteorological boundary conditions
+#' @return vector or matrix; meteorological boundary conditions with noise
+#' @export
+add_noise <- function(bc){
+  for (ii in 2:ncol(bc)){
+    corrupt <- rbinom(nrow(bc),1,0.1)    # choose an average of 10% to corrupt at random
+    corrupt <- as.logical(corrupt)
+    noise <- rnorm(sum(corrupt),mean = mean(bc[,ii]),sd=sd(bc[,ii])/10)
+    bc[corrupt,ii] <- bc[corrupt,ii] +  noise
+  }
+  return(bc)
+}
+
 
 #' Extract time and space information
 #'
@@ -28,15 +45,20 @@ TwoLayer <- function(t, y, parms){
   RH <- eair/esat *100 # relative humidity
   es <- 4.596 * exp((17.27 * y[1])/ (273.3+y[1]))
   # diffusion coefficient
-  Cd <- 0.00052 * (Uw(t))^(0.44)
-  shear <- 1.164/1000 * Cd * (Uw(t))^2
-  w0 <- sqrt(shear/rho)
-  E0  <- c * w0
-  
+  Cd <- 0.00052 * (vW(t))^(0.44)
+  shear <- 1.164/1000 * Cd * (vW(t))^2
+  #  shear <- Uw(t)
   rho_e <- calc_dens(y[1])/1000
   rho_h <- calc_dens(y[2])/1000
+  w0 <- sqrt(shear/rho_e) # sqrt(shear/rho)
+  E0  <- c * w0
   Ri <- ((g/rho)*(abs(rho_e-rho_h)/10))/(w0/(10)^2)
-  dV <- (E0 / (1 + a * Ri)^(3/2))/(Ht/100) * (86400/10000)
+  if (rho_e > rho_h){
+    dV = 100
+  } else {
+    dV <- (E0 / (1 + a * Ri)^(3/2))/(Ht/100) * (86400/10000)
+  }
+  # dV <- (E0 / (1 + a * Ri)^(3/2))/(Ht/100) * (86400/10000)
   
   # epilimnion water temperature change per time unit
   dTe <-  Q / Ve * Tin -              # inflow heat
@@ -73,3 +95,6 @@ TwoLayer <- function(t, y, parms){
   
   return(list(c(dTe, dTh)))
 }
+
+
+
