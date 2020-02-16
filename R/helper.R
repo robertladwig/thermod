@@ -39,7 +39,7 @@ add_noise <- function(bc){
 #' @param parns matrix; Water temperatures (rows correspond to time, cols to depth)
 #' @return list of datetimes and depths
 #' @export
-run_model <- function(bc, params, ini, times){
+run_model <- function(modelfunc = 'TwoLayer', bc, params, ini, times){
   
   Ve <- params[1]
   Vh <- params[2]
@@ -58,6 +58,9 @@ run_model <- function(bc, params, ini, times){
   a <- params[15]
   c <- params[16]
   g <- params[17]
+  NEP <- params[18]
+  Fsed<- params[19]
+  Ased <- params[20]
   
   TwoLayer <- function(t, y, parms){
   eair <- (4.596 * exp((17.27 * Dew(t)) / (237.3 + Dew(t)))) # air vapor pressure
@@ -115,6 +118,81 @@ run_model <- function(bc, params, ini, times){
   return(list(c(dTe, dTh)))
   }
   
+  TwoLayerOxy <- function(t, y, parms){
+    eair <- (4.596 * exp((17.27 * Dew(t)) / (237.3 + Dew(t)))) # air vapor pressure
+    esat <- 4.596 * exp((17.27 * Tair(t)) / (237.3 + Tair(t))) # saturation vapor pressure
+    RH <- eair/esat *100 # relative humidity
+    es <- 4.596 * exp((17.27 * y[1])/ (273.3+y[1]))
+    # diffusion coefficient
+    Cd <- 0.00052 * (vW(t))^(0.44)
+    shear <- 1.164/1000 * Cd * (vW(t))^2
+    #  shear <- Uw(t)
+    rho_e <- calc_dens(y[1])/1000
+    rho_h <- calc_dens(y[2])/1000
+    w0 <- sqrt(shear/rho_e) # sqrt(shear/rho)
+    E0  <- c * w0
+    Ri <- ((g/rho)*(abs(rho_e-rho_h)/10))/(w0/(10)^2)
+    if (rho_e > rho_h){
+      dV = 100
+      mult = 1/10
+    } else {
+      dV <- (E0 / (1 + a * Ri)^(3/2))/(Ht/100) * (86400/10000)
+      mult = 1.0
+    }
+    
+    # epilimnion water temperature change per time unit
+    dTe <-  Q / Ve * Tin -              # inflow heat
+      Q / Ve * y[1] +                   # outflow heat
+      ((dV * At) / Ve) * (y[2] - y[1]) + # mixing between epilimnion and hypolimnion # ((vt(t) * At) / Ve) * (y[2] - y[1])
+      + As/(Ve * rho * cp) * (
+        Jsw(t)  + # shortwave radiation
+          (sigma * (Tair(t) + 273)^4 * (Acoeff + 0.031 * sqrt(eair)) * (1 - Rl)) - # longwave radiation into the lake
+          (eps * sigma * (y[1] + 273)^4)  - # backscattering longwave radiation from the lake
+          (c1 * Uw(t) * (y[1] - Tair(t))) - # convection
+          (Uw(t) * ((es) - (eair))) )# evaporation
+    
+    # hypolimnion water temperature change per time unit
+    dTh <-  ((dV * At) / Vh) * (y[1] - y[2]) # ((vt(t) * At) / Vh) * (y[1] - y[2]) 
+    
+    K600 <- k.cole.base(2)
+    kO2 <- k600.2.kGAS.base(k600=K600, 
+                                 temperature=y[1], 
+                                 gas='O2') # m/d
+    o2sat<-o2.at.sat.base(temp= y[1], 
+                               altitude = 300)*1000 # mg O2/L
+    Fatm <- kO2*(o2sat - y[3] )/ (As/Ve) # mg/m m/d = mg/d
+    
+    Sed <- Fsed * y[4]/ (Ased/Vh)  * 1.08^(y[2]-20) * mult
+    
+    PP <- 1.08^(y[1]-20) * NEP * Ve * mult 
+    
+    
+    dOe <-( PP +
+      Fatm +
+      ((dV * At) / Ve) * (y[4] - y[3]) ) /Ve
+    
+    dOh <- ( ((dV * At) / Vh) * (y[3] - y[4]) - 
+      Sed) / Vh
+    
+    
+    # diagnostic variables for plotting
+    mix_e <- (vt(t) * At * rho * cp) * (y[2] - y[1])  /As#((vt(t) * At) / Ve) * (y[2] - y[1])
+    mix_h <- (vt(t) * At *rho * cp) * (y[1] - y[2]) /At#(vt(t) * At) / (Vh) * (y[1] - y[2])
+    qin <- Q * rho * cp * Tin /As#Q / Ve * Tin
+    qout <- - Q * rho * cp * y[1] /As #- Q / Ve * y[1] 
+    sw <- Jsw(t) #*As#* As/(Ve * rho * cp)
+    lw <- (sigma * (Tair(t) + 273)^4 * (Acoeff + 0.031 * sqrt(eair)) * (1 - Rl)) #* As#* As/(Ve * rho * cp)
+    water_lw <- - (eps * sigma * (y[1]+ 273)^4) #*As#*As/(Ve * rho * cp)
+    conv <- - (c1 * Uw(t) * (y[1] - Tair(t))) #*As#*As/(Ve * rho * cp)
+    evap <- - (Uw(t) * ((esat) - (eair))) #*As #*As/(Ve * rho * cp)
+    Rh <- RH
+    E <- (E0 / (1 + a * Ri)^(3/2))
+    
+    write.table(matrix(c(qin, qout, mix_e, mix_h, sw, lw, water_lw, conv, evap, Rh,E, Ri, t), nrow=1), 'output.txt', append = TRUE,
+                quote = FALSE, row.names = FALSE, col.names = FALSE)
+    
+    return(list(c(dTe, dTh, dOe, dOh)))
+  }
   
   # approximating all boundary conditions 
   Jsw <- approxfun(x = bc$Month, y = bc$Jsw, method = "linear", rule = 2)
@@ -125,7 +203,12 @@ run_model <- function(bc, params, ini, times){
   vt <- approxfun(x = bc$Month, y = bc$vt, method = "linear", rule = 2)
 
   # runge-kutta 4th order
-  out <- ode(times = times, y = ini, func = TwoLayer, parms = params, method = 'rk4')
+  if (modelfunc == 'TwoLayer'){
+    out <- ode(times = times, y = ini, func = TwoLayer, parms = params, method = 'rk4')
+  } else if (modelfunc == 'TwoLayerOxy'){
+    out <- ode(times = times, y = ini, func = TwoLayerOxy, parms = params, method = 'rk4')
+  }
+ 
   
   return(out)
 }

@@ -4,7 +4,7 @@
 \alias{run_model}
 \title{Extract time and space information}
 \usage{
-run_model(bc, params, ini, times)
+run_model(modelfunc = "TwoLayer", bc, params, ini, times)
 }
 \arguments{
 \item{t}{matrix; Water temperatures (rows correspond to time, cols to depth)}

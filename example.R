@@ -3,6 +3,8 @@ library(deSolve)
 library(gridExtra)
 library(ggplot2)
 library(RColorBrewer)
+library(LakeMetabolizer)
+
 library(thermod)
 
 setwd(dirname(rstudioapi::getSourceEditorContext()$path))
@@ -34,8 +36,11 @@ c1 <- 0.47 # Bowen's coefficient
 a <- 7 # constant
 c <- 9e4 # empirical constant
 g <- 9.81 # gravity (m/s2)
+NEP = 0.1 # net ecosystem productivity
+Fsed = 0.75 # sediment O2 flux
+Ased = 500 *1e4 # sediment area
 
-parameters <- c(Ve, Vh, At, Ht, As, Tin, Q, Rl, Acoeff, sigma, eps, rho, cp, c1, a, c, g)
+parameters <- c(Ve, Vh, At, Ht, As, Tin, Q, Rl, Acoeff, sigma, eps, rho, cp, c1, a, c, g, NEP, Fsed, Ased)
 
 Et <- 7.07 * 10^(-4)  * ((Ve+Vh)/As/100)^(1.1505) # vertifcal diffusion coefficient (cm2 per d)
 vto <- Et/(Ht/100) * (86400/10000) #*100 # heat change coefficient across thermocline during stratified season
@@ -67,7 +72,9 @@ boundary <- add_noise(boundary)
 times <- seq(from = 1, to = max(boundary$Month), by = 1)
 yini <- c(5,5) # initial water temperatures
 
-out <- run_model(bc = boundary, params = parameters, ini = yini, times = times)
+model = 'TwoLayer'
+out <- run_model(modelfunc = model, bc = boundary, params = parameters, ini = yini, times = times)
+out <- run_model(model = 'TwoLayerOxy', bc = boundary, params = parameters, ini = c(yini, 10, 10), times = times)
 
 result <- data.frame('Time' = out[,1],
                      'WT_epi' = out[,2], 'WT_hyp' = out[,3])
