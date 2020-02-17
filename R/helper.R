@@ -60,7 +60,8 @@ run_model <- function(modelfunc = 'TwoLayer', bc, params, ini, times){
   g <- params[17]
   NEP <- params[18]
   Fsed<- params[19]
-  Ased <- params[20]
+  MINERAL <- params[20]
+  Ased <- params[21]
   
   TwoLayer <- function(t, y, parms){
   eair <- (4.596 * exp((17.27 * Dew(t)) / (237.3 + Dew(t)))) # air vapor pressure
@@ -134,7 +135,7 @@ run_model <- function(modelfunc = 'TwoLayer', bc, params, ini, times){
     Ri <- ((g/rho)*(abs(rho_e-rho_h)/10))/(w0/(10)^2)
     if (rho_e > rho_h){
       dV = 1e2 #100
-      mult = 1/10
+      mult = 1/100#1/1000
     } else {
       dV <- (E0 / (1 + a * Ri)^(3/2))/(Ht/100) * (86400/10000)
       mult = 1.0
@@ -164,17 +165,20 @@ run_model <- function(modelfunc = 'TwoLayer', bc, params, ini, times){
     Fatm <- kO2*(o2sat * Ve - y[3] ) * (As/Ve) # mg * m/d * m2/m3= mg/d
     #  kO2*(o2sat - y[3] )/ (As/Ve) # mg/m m/d = mg/d
     
-    Sed <- Fsed * y[4] * (Ased/Vh)  * 1.03^(y[2]-20) * mult # m/d * mg * m2/m3
+    Sed <- Fsed * y[4] * (Ased/Vh)  * 1.03^(y[2]-20) #* mult # m/d * mg * m2/m3
     #  Fsed * y[4]/ (Ased/Vh)  * 1.08^(y[2]-20) * mult
     
     PP <- 1.08^(y[1]-20) * NEP * Ve * mult # mg/m3/d * m3
     # 1.08^(y[1]-20) * NEP * Ve * mult 
+    
+    VOL <- 1.08^(y[2]-20) * MINERAL * Vh * mult # mg/m3/d * m3
     
     dOe <-( PP +
       Fatm +
       ((dV * At) / Ve) * (y[4] - y[3]) ) 
     
     dOh <- ( ((dV * At) / Vh) * (y[3] - y[4]) - 
+               - VOL - 
       Sed) 
     
     
