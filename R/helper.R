@@ -133,7 +133,7 @@ run_model <- function(modelfunc = 'TwoLayer', bc, params, ini, times){
     E0  <- c * w0
     Ri <- ((g/rho)*(abs(rho_e-rho_h)/10))/(w0/(10)^2)
     if (rho_e > rho_h){
-      dV = 100
+      dV = 1e2 #100
       mult = 1/10
     } else {
       dV <- (E0 / (1 + a * Ri)^(3/2))/(Ht/100) * (86400/10000)
@@ -155,24 +155,27 @@ run_model <- function(modelfunc = 'TwoLayer', bc, params, ini, times){
     dTh <-  ((dV * At) / Vh) * (y[1] - y[2]) # ((vt(t) * At) / Vh) * (y[1] - y[2]) 
     
     K600 <- k.cole.base(2)
+    water.tmp = y[1]
     kO2 <- k600.2.kGAS.base(k600=K600, 
-                                 temperature=y[1], 
+                                 temperature=water.tmp, 
                                  gas='O2') # m/d
-    o2sat<-o2.at.sat.base(temp= y[1], 
+    o2sat<-o2.at.sat.base(temp= water.tmp, 
                                altitude = 300)*1000 # mg O2/L
-    Fatm <- kO2*(o2sat - y[3] )/ (As/Ve) # mg/m m/d = mg/d
+    Fatm <- kO2*(o2sat * Ve - y[3] ) * (As/Ve) # mg * m/d * m2/m3= mg/d
+    #  kO2*(o2sat - y[3] )/ (As/Ve) # mg/m m/d = mg/d
     
-    Sed <- Fsed * y[4]/ (Ased/Vh)  * 1.08^(y[2]-20) * mult
+    Sed <- Fsed * y[4] * (Ased/Vh)  * 1.03^(y[2]-20) * mult # m/d * mg * m2/m3
+    #  Fsed * y[4]/ (Ased/Vh)  * 1.08^(y[2]-20) * mult
     
-    PP <- 1.08^(y[1]-20) * NEP * Ve * mult 
-    
+    PP <- 1.08^(y[1]-20) * NEP * Ve * mult # mg/m3/d * m3
+    # 1.08^(y[1]-20) * NEP * Ve * mult 
     
     dOe <-( PP +
       Fatm +
-      ((dV * At) / Ve) * (y[4] - y[3]) ) /Ve
+      ((dV * At) / Ve) * (y[4] - y[3]) ) 
     
     dOh <- ( ((dV * At) / Vh) * (y[3] - y[4]) - 
-      Sed) / Vh
+      Sed) 
     
     
     # diagnostic variables for plotting

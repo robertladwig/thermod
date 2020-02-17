@@ -9,10 +9,10 @@ library(thermod)
 
 setwd(dirname(rstudioapi::getSourceEditorContext()$path))
 
-if (file.exists('output.txt')) 
+if (file.exists('output.txt')) {
   # delete file if it exists
   file.remove('output.txt')
-
+}
 # input data: month, shortwave radiation, air temperature, dew point temperature, wind speed
 bound <- matrix(c(seq(1,12,1),
                   169, 274, 414, 552, 651, 684, 642, 537, 397, 259, 160, 127,
@@ -36,9 +36,9 @@ c1 <- 0.47 # Bowen's coefficient
 a <- 7 # constant
 c <- 9e4 # empirical constant
 g <- 9.81 # gravity (m/s2)
-NEP = 0.1 # net ecosystem productivity
-Fsed = 0.75 # sediment O2 flux
-Ased = 500 *1e4 # sediment area
+NEP = 0.05 * 1000#0.1 # net ecosystem productivity
+Fsed = 0.9 * 100 #0.75 # sediment O2 flux
+Ased = 5000 *1e4 # sediment area
 
 parameters <- c(Ve, Vh, At, Ht, As, Tin, Q, Rl, Acoeff, sigma, eps, rho, cp, c1, a, c, g, NEP, Fsed, Ased)
 
@@ -74,7 +74,10 @@ yini <- c(5,5) # initial water temperatures
 
 model = 'TwoLayer'
 out <- run_model(modelfunc = model, bc = boundary, params = parameters, ini = yini, times = times)
-out <- run_model(model = 'TwoLayerOxy', bc = boundary, params = parameters, ini = c(yini, 10, 10), times = times)
+out <- run_model(model = 'TwoLayerOxy', bc = boundary, params = parameters, ini = c(yini, 8*1000*Ve, 8*1000*Vh), 
+                 times = times)
+plot(out[,4]/Ve/1000,ylim=c(0,25), col = 'red')
+points(out[,5]/Vh/1000,col='blue')
 
 result <- data.frame('Time' = out[,1],
                      'WT_epi' = out[,2], 'WT_hyp' = out[,3])
