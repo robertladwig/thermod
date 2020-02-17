@@ -39,6 +39,8 @@ add_noise <- function(bc){
 #' @param parns matrix; Water temperatures (rows correspond to time, cols to depth)
 #' @return list of datetimes and depths
 #' @export
+#' @import deSolve 
+#' @import LakeMetabolizer
 run_model <- function(modelfunc = 'TwoLayer', bc, params, ini, times){
   
   Ve <- params[1]

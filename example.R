@@ -1,9 +1,10 @@
 rm(list = ls())
-library(deSolve)
+# library(deSolve)
+# for plotting
 library(gridExtra)
 library(ggplot2)
 library(RColorBrewer)
-library(LakeMetabolizer)
+# library(LakeMetabolizer)
 
 library(thermod)
 

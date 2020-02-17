@@ -3,3 +3,5 @@
 export(add_noise)
 export(calc_dens)
 export(run_model)
+import(LakeMetabolizer)
+import(deSolve)
