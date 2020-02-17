@@ -11,14 +11,16 @@ library(deSolve)
 library(gridExtra)
 library(ggplot2)
 library(RColorBrewer)
+library(LakeMetabolizer)
+
 library(thermod)
 
 setwd(dirname(rstudioapi::getSourceEditorContext()$path))
 
-if (file.exists('output.txt')) 
+if (file.exists('output.txt')) {
   # delete file if it exists
   file.remove('output.txt')
-
+}
 # input data: month, shortwave radiation, air temperature, dew point temperature, wind speed
 bound <- matrix(c(seq(1,12,1),
                   169, 274, 414, 552, 651, 684, 642, 537, 397, 259, 160, 127,
@@ -42,8 +44,12 @@ c1 <- 0.47 # Bowen's coefficient
 a <- 7 # constant
 c <- 9e4 # empirical constant
 g <- 9.81 # gravity (m/s2)
+NEP = 0.05 * 1000#0.1 # net ecosystem productivity
+Fsed = 0.9 * 100 #0.75 # sediment O2 flux
+MINERAL = 0.05 * 1000 # mineralization
+Ased = 15000 *1e4 # sediment area
 
-parameters <- c(Ve, Vh, At, Ht, As, Tin, Q, Rl, Acoeff, sigma, eps, rho, cp, c1, a, c, g)
+parameters <- c(Ve, Vh, At, Ht, As, Tin, Q, Rl, Acoeff, sigma, eps, rho, cp, c1, a, c, g, NEP, Fsed, MINERAL, Ased)
 
 Et <- 7.07 * 10^(-4)  * ((Ve+Vh)/As/100)^(1.1505) # vertifcal diffusion coefficient (cm2 per d)
 vto <- Et/(Ht/100) * (86400/10000) #*100 # heat change coefficient across thermocline during stratified season
@@ -75,7 +81,10 @@ boundary <- add_noise(boundary)
 times <- seq(from = 1, to = max(boundary$Month), by = 1)
 yini <- c(5,5) # initial water temperatures
 
-out <- run_model(bc = boundary, params = parameters, ini = yini, times = times)
+model = 'TwoLayerOxy'
+# out <- run_model(modelfunc = model, bc = boundary, params = parameters, ini = yini, times = times)
+out <- run_model(modelfunc = model, bc = boundary, params = parameters, ini = c(yini, 8/1000*Ve, 8/1000*Vh), 
+                 times = times)
 
 result <- data.frame('Time' = out[,1],
                      'WT_epi' = out[,2], 'WT_hyp' = out[,3])
@@ -84,6 +93,7 @@ g1 <- ggplot(result) +
   geom_line(aes(x=(Time), y=WT_hyp, col='Bottom Layer')) +
   labs(x = 'Simulated Time', y = 'WT in deg C')  +
   theme_bw()+
+  guides(col=guide_legend(title="Layer")) +
   theme(legend.position="bottom")
 
 output <- read.table('output.txt')
@@ -111,8 +121,8 @@ g2 <- ggplot(output) +
   theme(legend.position="bottom")
 
 g3 <- ggplot(output) +
-  geom_line(aes(x = time,y = Ri, col = 'richardson')) +
-  geom_line(aes(x = time,y = entrain, col = 'entrainment')) +
+  geom_line(aes(x = time,y = Ri, col = 'Richardson')) +
+  geom_line(aes(x = time,y = entrain, col = 'Entrainment')) +
   scale_colour_brewer("Stability terms", palette="Set1") +
   labs(x = 'Simulated Time', y = 'Entrainment in cm2/s and Ri in [-]')  +
   theme_bw()+
@@ -131,7 +141,24 @@ g4 <- ggplot(boundary) +
 
 
 g5 <- grid.arrange(g1, g2, g3, g4, ncol =1);g5
-ggsave(file='2L_visual_result.png', g5, dpi = 300,width = 200,height = 220, units = 'mm')
+ggsave(file='images/2L_visual_result.png', g5, dpi = 300,width = 200,height = 220, units = 'mm')
+
+if (model == 'TwoLayerOxy'){
+result <- data.frame('Time' = out[,1],
+                     'WT_epi' = out[,2], 'WT_hyp' = out[,3],
+                     'DO_epi' = out[,4]/1000/Ve, 'DO_hyp' = out[,5]/1000/Vh)
+g5 <- ggplot(result) +
+  geom_line(aes(x=Time, y=DO_epi, col='Surface Mixed Layer')) +
+  geom_line(aes(x=(Time), y=DO_hyp, col='Bottom Layer')) +
+  labs(x = 'Simulated Time', y = 'DO in mg/L')  +
+  ylim(0,25) +
+  theme_bw()+
+  guides(col=guide_legend(title="Layer")) +
+  theme(legend.position="bottom")
+
+g6 <- grid.arrange(g1, g5, g2, g3, g4, ncol =1);g6
+ggsave(file='images/2LOxy_visual_result.png', g6, dpi = 300,width = 200,height = 220, units = 'mm')
+}
 ```
 
-![](images/2L_visual_result.png)<!-- -->
+![](images/2LOxy_visual_result.png)<!-- -->
