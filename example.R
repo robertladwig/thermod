@@ -1,12 +1,10 @@
 rm(list = ls())
-# library(deSolve)
-# for plotting
+
 library(gridExtra)
 library(ggplot2)
 library(RColorBrewer)
-# library(LakeMetabolizer)
 
-# library(thermod)
+library(thermod)
 
 setwd(dirname(rstudioapi::getSourceEditorContext()$path))
 
@@ -41,7 +39,7 @@ NEP = 0.2 / 1000#0.1 # net ecosystem productivity
 Fsed = 0.9 #0.75 # sediment O2 flux
 MINERAL = 0.1 / 100000 # mineralization
 Ased = 15000 *1e4 # sediment area
-diffred = 100
+diffred = 100 # reduction of diffusion for oxygen transport
 
 parameters <- c(Ve, Vh, At, Ht, As, Tin, Q, Rl, Acoeff, sigma, eps, rho, cp, c1, a, c, g, NEP, Fsed, MINERAL, Ased, diffred)
 
