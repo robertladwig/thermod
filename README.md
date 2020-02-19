@@ -5,13 +5,13 @@ thermod is a simple two-layer water temperature model that assumes that the lake
 All equations and derivations are from Steven C. Chapra (2008) 'Surface Water-Quality Modeling' Waveland Press, Inc.
 
 You can run the model using the example.R script.
+
 ```
 rm(list = ls())
-library(deSolve)
+
 library(gridExtra)
 library(ggplot2)
 library(RColorBrewer)
-library(LakeMetabolizer)
 
 library(thermod)
 
@@ -43,13 +43,14 @@ cp <- 0.99 # specific heat (cal per gram per deg C)
 c1 <- 0.47 # Bowen's coefficient
 a <- 7 # constant
 c <- 9e4 # empirical constant
-g <- 9.81 # gravity (m/s2)
-NEP = 0.05 * 1000#0.1 # net ecosystem productivity
-Fsed = 0.9 * 100 #0.75 # sediment O2 flux
-MINERAL = 0.05 * 1000 # mineralization
+g <- 9.81  # gravity (m/s2)
+NEP = 0.2 / 1000#0.1 # net ecosystem productivity
+Fsed = 0.9 #0.75 # sediment O2 flux
+MINERAL = 0.1 / 100000 # mineralization
 Ased = 15000 *1e4 # sediment area
+diffred = 100 # reduction of diffusion for oxygen transport
 
-parameters <- c(Ve, Vh, At, Ht, As, Tin, Q, Rl, Acoeff, sigma, eps, rho, cp, c1, a, c, g, NEP, Fsed, MINERAL, Ased)
+parameters <- c(Ve, Vh, At, Ht, As, Tin, Q, Rl, Acoeff, sigma, eps, rho, cp, c1, a, c, g, NEP, Fsed, MINERAL, Ased, diffred)
 
 Et <- 7.07 * 10^(-4)  * ((Ve+Vh)/As/100)^(1.1505) # vertifcal diffusion coefficient (cm2 per d)
 vto <- Et/(Ht/100) * (86400/10000) #*100 # heat change coefficient across thermocline during stratified season
@@ -84,7 +85,7 @@ yini <- c(5,5) # initial water temperatures
 model = 'TwoLayerOxy'
 # out <- run_model(modelfunc = model, bc = boundary, params = parameters, ini = yini, times = times)
 out <- run_model(modelfunc = model, bc = boundary, params = parameters, ini = c(yini, 8/1000*Ve, 8/1000*Vh), 
-                 times = times)
+                 times = times) # c(yini, 8/1000*Ve, 8/1000*Vh)
 
 result <- data.frame('Time' = out[,1],
                      'WT_epi' = out[,2], 'WT_hyp' = out[,3])
@@ -101,8 +102,11 @@ output <- read.table('output.txt')
 output <- data.frame('qin'=output[,1],'qout'=output[,2],'mix_e'=output[,3],'mix_h'=output[,4],
                      'sw'=output[,5],'lw'=output[,6],'water_lw'=output[,7],'conv'=output[,8],
                      'evap'=output[,9], 'Rh' = output[,10],
-                     'entrain' = output[,11], 'Ri' = output[,12],'time' = output[,13])
-output$balance <- apply(output[,-c(10,11,12,13)],1, sum)
+                     'entrain' = output[,11], 'Ri' = output[,12],'time' = output[,13],
+                     'Fatm' = output[,14], 'Sed' = output[,15], 'PP' = output[,16], 'VOL' = output[,17], 
+                     'Oflux_epi' = output[,18], 'Oflux_hypo' = output[,19])
+#Fatm, Sed, PP, VOl, Oflux_epi, Oflux_hypo
+output$balance <- apply(output[,c(1:9)],1, sum)
 
 g2 <- ggplot(output) +
   geom_line(aes(x = time,y = qin, col = 'Inflow')) +
@@ -146,18 +150,30 @@ ggsave(file='images/2L_visual_result.png', g5, dpi = 300,width = 200,height = 22
 if (model == 'TwoLayerOxy'){
 result <- data.frame('Time' = out[,1],
                      'WT_epi' = out[,2], 'WT_hyp' = out[,3],
-                     'DO_epi' = out[,4]/1000/Ve, 'DO_hyp' = out[,5]/1000/Vh)
+                     'DO_epi' = out[,4]/Ve*1000, 'DO_hyp' = out[,5]/Vh*1000)
 g5 <- ggplot(result) +
   geom_line(aes(x=Time, y=DO_epi, col='Surface Mixed Layer')) +
   geom_line(aes(x=(Time), y=DO_hyp, col='Bottom Layer')) +
   labs(x = 'Simulated Time', y = 'DO in mg/L')  +
-  ylim(0,25) +
+  ylim(0,20) +
   theme_bw()+
   guides(col=guide_legend(title="Layer")) +
   theme(legend.position="bottom")
 
-g6 <- grid.arrange(g1, g5, g2, g3, g4, ncol =1);g6
-ggsave(file='images/2LOxy_visual_result.png', g6, dpi = 300,width = 200,height = 220, units = 'mm')
+g6 <- ggplot(output) +
+  geom_line(aes(x = time,y = (Fatm), col = 'Fatm (Epi)')) +
+  geom_line(aes(x = time,y = (Sed)*(-1), col = 'Fsed (Hypo)')) +
+  geom_line(aes(x = time,y = (PP), col = 'NEP (Epi)')) +
+  geom_line(aes(x = time,y = (VOL)* (-1), col = 'Mineralization (Hypo)')) +
+  geom_line(aes(x = time,y = (Oflux_epi), col = 'Flux from Epi to Hypo')) +
+  geom_line(aes(x = time,y = (Oflux_hypo), col = 'Flux from Hypo to Epi')) +
+  scale_colour_brewer("Energy terms", palette="Set2") +
+  labs(x = 'Simulated Time', y = 'Fluxes in mg O2/d')  +
+  theme_bw()+
+  theme(legend.position="bottom")
+
+g7 <- grid.arrange(g1, g2, g5, g6, g3, g4, ncol =1);g7
+ggsave(file='images/2LOxy_visual_result.png', g7, dpi = 300,width = 200,height = 320, units = 'mm')
 }
 ```
 
