@@ -64,6 +64,7 @@ run_model <- function(modelfunc = 'TwoLayer', bc, params, ini, times){
   Fsed<- params[19]
   MINERAL <- params[20]
   Ased <- params[21]
+  diffred <- params[22]
   
   TwoLayer <- function(t, y, parms){
   eair <- (4.596 * exp((17.27 * Dew(t)) / (237.3 + Dew(t)))) # air vapor pressure
@@ -136,10 +137,12 @@ run_model <- function(modelfunc = 'TwoLayer', bc, params, ini, times){
     E0  <- c * w0
     Ri <- ((g/rho)*(abs(rho_e-rho_h)/10))/(w0/(10)^2)
     if (rho_e > rho_h){
-      dV = 1e2 #100
-      mult = 1/100#1/1000
+      dV = 1e3 #100
+      dV_oxy <- dV/diffred#/1e2
+      mult = 1/1000
     } else {
       dV <- (E0 / (1 + a * Ri)^(3/2))/(Ht/100) * (86400/10000)
+      dV_oxy <- dV/diffred
       mult = 1.0
     }
     
@@ -157,29 +160,30 @@ run_model <- function(modelfunc = 'TwoLayer', bc, params, ini, times){
     # hypolimnion water temperature change per time unit
     dTh <-  ((dV * At) / Vh) * (y[1] - y[2]) # ((vt(t) * At) / Vh) * (y[1] - y[2]) 
     
-    K600 <- k.cole.base(2)
+    U10 <- wind.scale.base(vW(t), wnd.z = 10)
+    K600 <- k.cole.base(U10)
     water.tmp = y[1]
     kO2 <- k600.2.kGAS.base(k600=K600, 
                                  temperature=water.tmp, 
-                                 gas='O2') # m/d
+                                 gas='O2') * 100 # m/d * 100 cm/m
     o2sat<-o2.at.sat.base(temp= water.tmp, 
-                               altitude = 300)*1000 # mg O2/L
-    Fatm <- kO2*(o2sat * Ve - y[3] ) * (As/Ve) # mg * m/d * m2/m3= mg/d
+                               altitude = 300)/1000 # mg O2/L
+    Fatm <- kO2*(o2sat  - y[3] /Ve) * (As) # mg * cm/d * cm2/cm3= cmg/d
     #  kO2*(o2sat - y[3] )/ (As/Ve) # mg/m m/d = mg/d
     
-    Sed <- Fsed * y[4] * (Ased/Vh)  * 1.03^(y[2]-20) #* mult # m/d * mg * m2/m3
+    Sed <- Fsed * y[4] * (Ased/Vh)  * 1.03^(y[2]-20) * mult # m/d * mg * m2/m3
     #  Fsed * y[4]/ (Ased/Vh)  * 1.08^(y[2]-20) * mult
     
-    PP <- 1.08^(y[1]-20) * NEP * Ve * mult # mg/m3/d * m3
+    PP <- 1.03^(y[1]-20) * NEP * Ve * mult # mg/m3/d * m3
     # 1.08^(y[1]-20) * NEP * Ve * mult 
     
-    VOL <- 1.08^(y[2]-20) * MINERAL * Vh * mult # mg/m3/d * m3
+    VOL <- 1.03^(y[2]-20) * MINERAL * Vh * mult # mg/m3/d * m3
     
     dOe <-( PP +
       Fatm +
-      ((dV * At) / Ve) * (y[4] - y[3]) ) 
+      ((dV_oxy  * At)) * (y[4]/Vh - y[3]/Ve)) 
     
-    dOh <- ( ((dV * At) / Vh) * (y[3] - y[4]) - 
+    dOh <- ( ((dV_oxy * At)) * (y[3]/Ve - y[4]/Vh) - #((dV_oxy * At) / Vh) * (y[3] - y[4])
                - VOL - 
       Sed) 
     
@@ -196,8 +200,11 @@ run_model <- function(modelfunc = 'TwoLayer', bc, params, ini, times){
     evap <- - (Uw(t) * ((esat) - (eair))) #*As #*As/(Ve * rho * cp)
     Rh <- RH
     E <- (E0 / (1 + a * Ri)^(3/2))
+    Oflux_epi <- ((dV_oxy  * At)) * (y[4]/Vh - y[3]/Ve)
+    Oflux_hypo <- ((dV_oxy * At)) * (y[3]/Ve - y[4]/Vh)
     
-    write.table(matrix(c(qin, qout, mix_e, mix_h, sw, lw, water_lw, conv, evap, Rh,E, Ri, t), nrow=1), 'output.txt', append = TRUE,
+    write.table(matrix(c(qin, qout, mix_e, mix_h, sw, lw, water_lw, conv, evap, Rh,E, Ri, t,
+                         Fatm, Sed, PP, VOL, Oflux_epi, Oflux_hypo), nrow=1), 'output.txt', append = TRUE,
                 quote = FALSE, row.names = FALSE, col.names = FALSE)
     
     return(list(c(dTe, dTh, dOe, dOh)))
