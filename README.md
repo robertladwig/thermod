@@ -13,5 +13,5 @@ The package includes example setups for Lough Feeagh (IR) and Lake Mendota (USA)
 
 A comparison between modeled epilimnion (red solid line) and hypolimnion (blue solid line) water temperatures to observed temepratures at 1 (red dots) and 20 m (blue dots) depth, respectively, for Lake Mendota shows that thermod is capable of sufficently replicating real lake dynamics:
 
-![](inst/mendota/2L_compare_mendota.png)<!-- -->
+![https://github.com/robertladwig/thermod](inst/mendota/2L_compare_mendota.png)<!-- -->
 
