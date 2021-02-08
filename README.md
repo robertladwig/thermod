@@ -9,3 +9,8 @@ You can run a toy model using the example.R script in `/inst/scripts`.
 The package includes example setups for Lough Feeagh (IR) and Lake Mendota (USA).
 
 ![](images/2L_visual_result.png)<!-- -->
+
+A comparison between modeled epilimnion (red solid line) and hypolimnion (blue solid line) water temperatures to observed temepratures at 1 (red dots) and 20 m (blue dots) depth, respectively, for Lake Mendota shows that thermod is capable of sufficently replicating real lake dynamics:
+
+![](inst/mendota/2L_compare_mendota.png)<!-- -->
+
