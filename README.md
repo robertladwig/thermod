@@ -4,7 +4,7 @@ thermod is a simple two-layer water temperature model that assumes that the lake
 
 All equations and derivations are from Steven C. Chapra (2008) 'Surface Water-Quality Modeling' Waveland Press, Inc.
 
-You can run a toy model using the example.R script.
+You can run a toy model using the example.R script in `/inst/scripts`.
 
 The package includes example setups for Lough Feeagh (IR) and Lake Mendota (USA).
 
