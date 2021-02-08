@@ -1,5 +1,5 @@
 # thermod
-<a href="url"><img src="images/thermod.png" align="right" height="220" width="220" ></a>
+<a href="https://github.com/robertladwig/thermod"><img src="images/thermod.png" align="right" height="220" width="220" ></a>
 
 thermod is a simple two-layer water temperature model that assumes that the lake is divided into two volumes: the epilimnion and the hypolimnion. Both layers are divided by a thermocline zone. The entrainment over the thermocline depends on a diffusion coefficient which is a function of the diffusion at neutral stability to the Richardson number.
 
