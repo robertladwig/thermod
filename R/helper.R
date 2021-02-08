@@ -118,6 +118,8 @@ run_model <- function(modelfunc = 'TwoLayer', bc, params, ini, times){
   
   write.table(matrix(c(qin, qout, mix_e, mix_h, sw, lw, water_lw, conv, evap, Rh,E, Ri, t), nrow=1), 'output.txt', append = TRUE,
               quote = FALSE, row.names = FALSE, col.names = FALSE)
+  # write.table(matrix(c(y[1], y[2], dTe, dTh, t), nrow=1), 'test.txt', append = TRUE,
+  #             quote = FALSE, row.names = FALSE, col.names = FALSE)
   
   return(list(c(dTe, dTh)))
   }
