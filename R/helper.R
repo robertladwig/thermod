@@ -62,6 +62,7 @@ run_model <- function(bc, params, ini, times){
   c <- params[16]
   g <- params[17]
   thermDep <- params[18]
+  calParam <- params[19]
   
   TwoLayer <- function(t, y, parms){
     eair <- (4.596 * exp((17.27 * Dew(t)) / (237.3 + Dew(t)))) # air vapor pressure
@@ -77,9 +78,9 @@ run_model <- function(bc, params, ini, times){
     E0  <- c * w0
     Ri <- ((g/rho)*(abs(rho_e-rho_h)/10))/(w0/(thermDep)^2)
     if (rho_e > rho_h){
-      dV = 100
+      dV = 100 * calParam
     } else {
-      dV <- (E0 / (1 + a * Ri)^(3/2))/(Ht/100) * (86400/10000)
+      dV <- (E0 / (1 + a * Ri)^(3/2))/(Ht/100) * (86400/10000) ** calParam
     }
     
     # epilimnion water temperature change per time unit

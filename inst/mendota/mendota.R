@@ -53,6 +53,7 @@ c1 <- 0.47 # Bowen's coefficient
 a <- 7 # constant
 c <- 9e4 # empirical constant
 g <- 9.81  # gravity (m/s2)
+calParam <- 1 # parameter for calibrating the entrainment over the thermocline depth
 
 ### CONVERTING METEO CSV FILE TO THERMOD SPECIFIC DATA
 # met <- read.csv('LakeEnsemblR_meteo_standard.csv', stringsAsFactors = F)
@@ -76,7 +77,7 @@ g <- 9.81  # gravity (m/s2)
 # load in the boundary data
 bound <-read_delim(paste0('meteo.txt'), delim = '\t')
 
-parameters <- c(Ve, Vh, At, Ht, As, Tin, Q, Rl, Acoeff, sigma, eps, rho, cp, c1, a, c, g, simple_therm_depth)
+parameters <- c(Ve, Vh, At, Ht, As, Tin, Q, Rl, Acoeff, sigma, eps, rho, cp, c1, a, c, g, simple_therm_depth, calParam)
 
 colnames(bound) <- c('Day','Jsw','Tair','Dew','vW')
 
@@ -96,6 +97,8 @@ calc_dens <- function(wtemp){
   return(dens)
 }
 
+parameters[19] = 3.2 # calibration parameter
+
 out <- run_model(bc = boundary, params = parameters, ini = yini, times = times)
 
 result <- data.frame('Time' = out[,1],
@@ -106,7 +109,7 @@ g1 <- ggplot(result) +
   labs(x = 'Simulated Time', y = 'WT in deg C')  +
   theme_bw()+
   guides(col=guide_legend(title="Layer")) +
-  theme(legend.position="bottom")
+  theme(legend.position="bottom");g1
 
 output <- read.table('output.txt')
 
@@ -131,7 +134,7 @@ g2 <- ggplot(output) +
   scale_colour_brewer("Energy terms", palette="Set3") +
   labs(x = 'Simulated Time', y = 'Fluxes in cal/(cm2 d)')  +
   theme_bw()+
-  theme(legend.position="bottom")
+  theme(legend.position="bottom");g2
 
 g3 <- ggplot(output) +
   geom_line(aes(x = time,y = Ri, col = 'Richardson')) +
@@ -139,7 +142,7 @@ g3 <- ggplot(output) +
   scale_colour_brewer("Stability terms", palette="Set1") +
   labs(x = 'Simulated Time', y = 'Entrainment in cm2/s and Ri in [-]')  +
   theme_bw()+
-  theme(legend.position="bottom")
+  theme(legend.position="bottom");g3
 
 g4 <- ggplot(boundary) +
   geom_line(aes(x = Day,y = scale(Jsw), col = 'Shortwave')) +
@@ -150,7 +153,7 @@ g4 <- ggplot(boundary) +
   scale_colour_brewer("Boundary Conditions", palette="Set3") +
   labs(x = 'Simulated Time', y = 'Scaled meteo. boundaries')  +
   theme_bw()+
-  theme(legend.position="bottom")
+  theme(legend.position="bottom");g4
 
 g5 <- grid.arrange(g1, g2, g3, g4, ncol =1);g5
 ggsave(file='2L_visual_mendota.png', g5, dpi = 300,width = 200,height = 220, units = 'mm')
@@ -183,4 +186,4 @@ g1 <- ggplot(result) +
   theme_bw()+
   guides(col=guide_legend(title="Layer")) +
   theme(legend.position="bottom");g1
-ggsave(file='2L_compare_mendota.png', g1, dpi = 300,width = 200,height = 120, units = 'mm')
+ggsave(file='2L_compare_mendota.png', g1, dpi = 300,width = 300,height = 120, units = 'mm')
