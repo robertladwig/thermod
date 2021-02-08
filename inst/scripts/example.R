@@ -73,9 +73,9 @@ boundary <- add_noise(boundary)
 times <- seq(from = 1, to = max(boundary$Month), by = 1)
 yini <- c(5,5) # initial water temperatures
 
-model = 'TwoLayerOxy'
+model = 'TwoLayer'#'TwoLayerOxy'
 # out <- run_model(modelfunc = model, bc = boundary, params = parameters, ini = yini, times = times)
-out <- run_model(modelfunc = model, bc = boundary, params = parameters, ini = c(yini, 8/1000*Ve, 8/1000*Vh), 
+out <- run_model(modelfunc = model, bc = boundary, params = parameters, ini = c(yini),  #ini = c(yini, 8/1000*Ve, 8/1000*Vh)
                  times = times) # c(yini, 8/1000*Ve, 8/1000*Vh)
 
 result <- data.frame('Time' = out[,1],
@@ -136,7 +136,7 @@ g4 <- ggplot(boundary) +
 
 
 g5 <- grid.arrange(g1, g2, g3, g4, ncol =1);g5
-ggsave(file='images/2L_visual_result.png', g5, dpi = 300,width = 200,height = 220, units = 'mm')
+ggsave(file='../../images/2L_visual_result.png', g5, dpi = 300,width = 200,height = 220, units = 'mm')
 
 if (model == 'TwoLayerOxy'){
 result <- data.frame('Time' = out[,1],
@@ -164,5 +164,5 @@ g6 <- ggplot(output) +
   theme(legend.position="bottom")
 
 g7 <- grid.arrange(g1, g2, g5, g6, g3, g4, ncol =1);g7
-ggsave(file='images/2LOxy_visual_result.png', g7, dpi = 300,width = 200,height = 320, units = 'mm')
+ggsave(file='../../images/2LOxy_visual_result.png', g7, dpi = 300,width = 200,height = 320, units = 'mm')
 }
