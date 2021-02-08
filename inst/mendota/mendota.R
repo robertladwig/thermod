@@ -161,6 +161,7 @@ ggsave(file='2L_visual_mendota.png', g5, dpi = 300,width = 200,height = 220, uni
 
 obs <-read_delim(paste0('obs.txt'), delim = ',')
 
+### EITHER COMPARE AGAINST SPECIFIC DEPTHS
 obs_sfc <- obs %>%
   filter(Depth_meter == 1) %>%
   mutate('date' = yday(datetime),
@@ -172,16 +173,27 @@ obs_btm <- obs %>%
          'btm' = Water_Temperature_celsius) 
 obs_btm$time = match(as.Date(obs_btm$datetime), seq(as.Date(start_date), as.Date(stop_date), by = 'day'))
 
-
-# all_obs <- data.frame('date' = yday(obs_sfc$datetime), 'sfc' = obs_sfc$Water_Temperature_celsius,
-#                       'btm' = obs_btm$Water_Temperature_celsius)
-# all_obs$date[nrow(all_obs)] = 366
+### OR COMPARE AGAINST AVERAGE OBSERVED DATA 
+obs_sfc <- obs %>%
+  filter(Depth_meter <= simple_therm_depth) %>%
+  mutate('date' = yday(datetime),
+         'sfc' = Water_Temperature_celsius) %>%
+  group_by(datetime) %>%
+  summarise('wtr_avg' = mean(sfc, na.rm = TRUE))
+obs_sfc$time = match(as.Date(obs_sfc$datetime), seq(as.Date(start_date), as.Date(stop_date), by = 'day'))
+obs_btm <- obs %>%
+  filter(Depth_meter >= simple_therm_depth) %>%
+  mutate('date' = yday(datetime),
+         'btm' = Water_Temperature_celsius) %>%
+  group_by(datetime) %>%
+  summarise('wtr_avg' = mean(btm, na.rm = TRUE))
+obs_btm$time = match(as.Date(obs_btm$datetime), seq(as.Date(start_date), as.Date(stop_date), by = 'day'))
 
 g1 <- ggplot(result) +
   geom_line(aes(x=Time, y=WT_epi, col='Surface Mixed Layer (model)'), col = 'red') +
   geom_line(aes(x=(Time), y=WT_hyp, col='Bottom Layer (model)'), col = 'blue') +
-  geom_point(data = obs_sfc, aes(x=time, y=sfc, col='Surface Mixed Layer (obs)'), col = 'red',linetype = "dashed") +
-  geom_point(data = obs_btm, aes(x=(time), y=btm, col='Bottom Layer (obs)'), col = 'blue',linetype = "dashed") +
+  geom_point(data = obs_sfc, aes(x=time, y=wtr_avg, col='Surface Mixed Layer (obs)'), col = 'red',linetype = "dashed") + # sfc
+  geom_point(data = obs_btm, aes(x=(time), y=wtr_avg, col='Bottom Layer (obs)'), col = 'blue',linetype = "dashed") + # btm
   labs(x = 'Simulated Time', y = 'WT in deg C')  +
   theme_bw()+
   guides(col=guide_legend(title="Layer")) +
