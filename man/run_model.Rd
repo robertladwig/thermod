@@ -2,20 +2,25 @@
 % Please edit documentation in R/helper.R
 \name{run_model}
 \alias{run_model}
-\title{Extract time and space information}
+\title{Simple two-layer water temperature model}
 \usage{
-run_model(modelfunc = "TwoLayer", bc, params, ini, times)
+run_model(bc, params, ini, times)
 }
 \arguments{
-\item{t}{matrix; Water temperatures (rows correspond to time, cols to depth)}
+\item{bc}{meteorological boundary conditions: day, shortwave radiation, air temperature, dew
+point temperature, wind speed and wind shear stress}
 
-\item{y}{matrix; Water temperatures (rows correspond to time, cols to depth)}
+\item{params}{configuration parameters}
 
-\item{parns}{matrix; Water temperatures (rows correspond to time, cols to depth)}
+\item{ini}{vector of the initial water temperatures of the epilimnion and hypolimnion}
+
+\item{times}{vector of time information}
 }
 \value{
-list of datetimes and depths
+matrix of simulated water temperatures in the pilimnion and hypolimnion
 }
 \description{
-Extracts time (from date column) and space (aka depth) information
+Runs a simple two-layer water temperature model in dependence of meteorological drivers and
+lake setup/configuration. The model automatically calculates summer stratification onset and
+offset
 }

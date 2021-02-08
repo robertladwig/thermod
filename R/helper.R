@@ -30,14 +30,18 @@ add_noise <- function(bc){
 }
 
 
-#' Extract time and space information
+#' Simple two-layer water temperature model
 #'
-#' Extracts time (from date column) and space (aka depth) information
+#' Runs a simple two-layer water temperature model in dependence of meteorological drivers and
+#' lake setup/configuration. The model automatically calculates summer stratification onset and
+#' offset
 #'
-#' @param t matrix; Water temperatures (rows correspond to time, cols to depth)
-#' @param y matrix; Water temperatures (rows correspond to time, cols to depth)
-#' @param parns matrix; Water temperatures (rows correspond to time, cols to depth)
-#' @return list of datetimes and depths
+#' @param bc meteorological boundary conditions: day, shortwave radiation, air temperature, dew
+#' point temperature, wind speed and wind shear stress
+#' @param params configuration parameters 
+#' @param ini vector of the initial water temperatures of the epilimnion and hypolimnion
+#' @param times vector of time information
+#' @return matrix of simulated water temperatures in the pilimnion and hypolimnion
 #' @export
 #' @import deSolve 
 #' @import LakeMetabolizer
