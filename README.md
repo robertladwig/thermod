@@ -8,4 +8,4 @@ You can run a toy model using the example.R script.
 
 The package includes example setups for Lough Feeagh (IR) and Lake Mendota (USA).
 
-![](images/2LOxy_visual_result.png)<!-- -->
+![](images/2L_visual_result.png)<!-- -->
