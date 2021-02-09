@@ -7,7 +7,7 @@ All equations and derivations are from Steven C. Chapra (2008) 'Surface Water-Qu
 
 You can run a toy model using the example.R script in `/inst/scripts`. The package also includes example setups for Lough Feeagh (IR) and Lake Mendota (USA).
 
-If you already have a [LakeEnsemblR configuration](https://github.com/aemon-j/LakeEnsemblR) of your lake, you can easily run the model with these files natively in R:
+If you already have a [LakeEnsemblR configuration](https://github.com/aemon-j/LakeEnsemblR) of your lake (you can also find [examples here](https://github.com/aemon-j/LER_examples)), you can easily run the model with these files natively in R:
 ```
 library(thermod)
 
