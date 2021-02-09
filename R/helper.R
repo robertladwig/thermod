@@ -34,12 +34,9 @@ add_noise <- function(bc){
 #'
 #' Use existing configuration data from LakeEnsemblR to prepare configuration files for the model
 #'
-#' @param bc meteorological boundary conditions: day, shortwave radiation, air temperature, dew
-#' point temperature, wind speed and wind shear stress
-#' @param params configuration parameters 
-#' @param ini vector of the initial water temperatures of the epilimnion and hypolimnion
-#' @param times vector of time information
-#' @return matrix of simulated water temperatures in the pilimnion and hypolimnion
+#' @param config_file string of your LER configuration file
+#' @param folder folder path to the configuration file
+#' @return vector of parameters to run thermod
 #' @export
 #' @import LakeEnsemblR 
 #' @import gotmtools

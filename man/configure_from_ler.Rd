@@ -7,17 +7,12 @@
 configure_from_ler(config_file = "LakeEnsemblR.yaml", folder = ".")
 }
 \arguments{
-\item{bc}{meteorological boundary conditions: day, shortwave radiation, air temperature, dew
-point temperature, wind speed and wind shear stress}
+\item{config_file}{string of your LER configuration file}
 
-\item{params}{configuration parameters}
-
-\item{ini}{vector of the initial water temperatures of the epilimnion and hypolimnion}
-
-\item{times}{vector of time information}
+\item{folder}{folder path to the configuration file}
 }
 \value{
-matrix of simulated water temperatures in the pilimnion and hypolimnion
+vector of parameters to run thermod
 }
 \description{
 Use existing configuration data from LakeEnsemblR to prepare configuration files for the model
