@@ -2,6 +2,9 @@
 
 export(add_noise)
 export(calc_dens)
+export(configure_from_ler)
 export(run_model)
+import(LakeEnsemblR)
 import(LakeMetabolizer)
 import(deSolve)
+import(gotmtools)

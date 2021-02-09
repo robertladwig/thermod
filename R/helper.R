@@ -30,6 +30,77 @@ add_noise <- function(bc){
 }
 
 
+#' Configure model with LakeEnsemblR data
+#'
+#' Use existing configuration data from LakeEnsemblR to prepare configuration files for the model
+#'
+#' @param bc meteorological boundary conditions: day, shortwave radiation, air temperature, dew
+#' point temperature, wind speed and wind shear stress
+#' @param params configuration parameters 
+#' @param ini vector of the initial water temperatures of the epilimnion and hypolimnion
+#' @param times vector of time information
+#' @return matrix of simulated water temperatures in the pilimnion and hypolimnion
+#' @export
+#' @import LakeEnsemblR 
+#' @import gotmtools
+configure_from_ler = function(config_file = 'LakeEnsemblR.yaml', folder = '.'){
+  yaml  <-  file.path(folder, config_file)
+  lev <- get_yaml_value(config_file, "location", "elevation")
+  max_depth <- get_yaml_value(config_file, "location", "depth")
+  hyp_file <- get_yaml_value(config_file, "location", "hypsograph")
+  hyp <- read.csv(hyp_file)
+  start_date <- get_yaml_value(config_file, "time", "start")
+  stop_date <- get_yaml_value(config_file, "time", "stop")
+  timestep <- get_yaml_value(config_file, "time", "time_step")
+  bsn_len <- get_yaml_value(config_file, "model_parameters", "bsn_len") 
+  bsn_wid <- get_yaml_value(config_file, "model_parameters", "bsn_wid") 
+  therm_depth <- 10 ^ (0.336 * log10(max(bsn_len, bsn_wid)) - 0.245)
+  simple_therm_depth <- round(therm_depth)
+  
+  ix <- match(simple_therm_depth, hyp$Depth_meter)
+  
+  Ve <- trapz(hyp$Depth_meter[1:ix], hyp$Area_meterSquared[1:ix]) * 1e6 # epilimnion volume
+  Vh <- trapz(hyp$Depth_meter[ix:nrow(hyp)], hyp$Area_meterSquared[ix:nrow(hyp)]) * 1e6 # hypolimnion volume
+  At <- approx(hyp$Depth_meter, hyp$Area_meterSquared, therm_depth)$y * 1e4 # thermocline area
+  Ht <- 3 * 100 # thermocline thickness
+  As <- max(hyp$Area_meterSquared) * 1e4 # surface area
+  Tin <- 0 # inflow water temperature
+  Q <- 0 # inflow discharge
+  Rl <- 0.03 # reflection coefficient (generally small, 0.03)
+  Acoeff <- 0.6 # coefficient between 0.5 - 0.7
+  sigma <- 11.7 * 10^(-8) # cal / (cm2 d K4) or: 4.9 * 10^(-3) # Stefan-Boltzmann constant in [J (m2 d K4)-1]
+  eps <- 0.97 # emissivity of water
+  rho <- 0.9982 # density (g per cm3)
+  cp <- 0.99 # specific heat (cal per gram per deg C)
+  c1 <- 0.47 # Bowen's coefficient
+  a <- 7 # constant
+  c <- 9e4 # empirical constant
+  g <- 9.81  # gravity (m/s2)
+  calParam <- 1 # parameter for calibrating the entrainment over the thermocline depth
+  
+  ### CONVERTING METEO CSV FILE TO THERMOD SPECIFIC DATA
+  met_file <- get_yaml_value(file = config_file, label = "meteo", key = "file")
+  met <- read.csv(met_file, stringsAsFactors = F)
+  met[, 1] <- as.POSIXct(met[, 1])
+  tstep <- diff(as.numeric(met[, 1]))
+  met$Dewpoint_Air_Temperature_Celsius <- met$Air_Temperature_celsius - ((100 - met$Relative_Humidity_percent)/5.)
+  bound <- met %>%
+    dplyr::select(datetime, Shortwave_Radiation_Downwelling_wattPerMeterSquared,
+                  Air_Temperature_celsius, Dewpoint_Air_Temperature_Celsius, Ten_Meter_Elevation_Wind_Speed_meterPerSecond)
+  bound$Shortwave_Radiation_Downwelling_wattPerMeterSquared <- bound$Shortwave_Radiation_Downwelling_wattPerMeterSquared * 2.0E-5 *3600*24
+  bound <- bound %>%
+    dplyr::filter(datetime >= start_date & datetime <= stop_date)
+  bound = bound %>%
+    group_by(datetime) %>%
+    summarise_all(mean)
+  bound$datetime <- seq(1, nrow(bound))
+  write_delim(bound, path = paste0(folder,'/meteo.txt'), delim = '\t')
+  
+  parameters <- c(Ve, Vh, At, Ht, As, Tin, Q, Rl, Acoeff, sigma, eps, rho, cp, c1, a, c, g, simple_therm_depth, calParam)
+  
+  return(parameters)
+}
+
 #' Simple two-layer water temperature model
 #'
 #' Runs a simple two-layer water temperature model in dependence of meteorological drivers and
@@ -45,7 +116,6 @@ add_noise <- function(bc){
 #' @export
 #' @import deSolve 
 #' @import LakeMetabolizer
-
 run_model <- function(bc, params, ini, times){
   
   Ve <- params[1]
