@@ -114,26 +114,25 @@ configure_from_ler = function(config_file = 'LakeEnsemblR.yaml', folder = '.'){
 #' @import deSolve 
 #' @import LakeMetabolizer
 run_model <- function(bc, params, ini, times){
-  
-  Ve <- params[1]
-  Vh <- params[2]
-  At <- params[3]
-  Ht <- params[4]
-  As <- params[5]
-  Tin <- params[6]
-  Q <- params[7]
-  Rl <- params[8]
-  Acoeff <- params[9]
-  sigma <- params[10]
-  eps <- params[11]
-  rho <- params[12]
-  cp <- params[13]
-  c1 <- params[14]
-  a <- params[15]
-  c <- params[16]
-  g <- params[17]
-  thermDep <- params[18]
-  calParam <- params[19]
+  Ve <- params[1] # epilimnion volume (cm3)
+  Vh <- params[2] # hypolimnion volume (cm3)
+  At <- params[3] # thermocline area (cm2)
+  Ht <- params[4] # thermocline thickness (cm)
+  As <- params[5] # surface area (cm2)
+  Tin <- params[6] # inflow water temperature (deg C)
+  Q <- params[7] # inflow discharge (deg C)
+  Rl <- params[8] # reflection coefficient (generally small, 0.03)
+  Acoeff <- params[9] # coefficient between 0.5 - 0.7
+  sigma <- params[10] # cal / (cm2 d K4) or: 4.9 * 10^(-3) # Stefan-Boltzmann constant in (J (m2 d K4)-1)
+  eps <- params[11] # emissivity of water
+  rho <- params[12] # density (g per cm3)
+  cp <- params[13] # specific heat (cal per gram per deg C)
+  c1 <- params[14] # Bowen's coefficient
+  a <- params[15] # constant
+  c <- params[16] # empirical constant
+  g <- params[17] # gravity (m/s2)
+  thermDep <- params[18] # thermocline depth (cm)
+  calParam <- params[19] # multiplier coefficient for calibrating the entrainment over the thermocline depth
   
   TwoLayer <- function(t, y, parms){
     eair <- (4.596 * exp((17.27 * Dew(t)) / (237.3 + Dew(t)))) # air vapor pressure
