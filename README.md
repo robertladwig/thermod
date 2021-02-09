@@ -5,9 +5,7 @@ thermod is a simple two-layer water temperature model that assumes that the lake
 
 All equations and derivations are from Steven C. Chapra (2008) 'Surface Water-Quality Modeling' Waveland Press, Inc.
 
-You can run a toy model using the example.R script in `/inst/scripts`.
-
-The package includes example setups for Lough Feeagh (IR) and Lake Mendota (USA).
+You can run a toy model using the example.R script in `/inst/scripts`. The package also includes example setups for Lough Feeagh (IR) and Lake Mendota (USA).
 
 If you already have a [LakeEnsemblR configuration](https://github.com/aemon-j/LakeEnsemblR) of your lake, you can easily run the model with these files natively in R:
 ```
