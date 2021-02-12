@@ -109,11 +109,12 @@ configure_from_ler = function(config_file = 'LakeEnsemblR.yaml', folder = '.'){
 #' @param params configuration parameters 
 #' @param ini vector of the initial water temperatures of the epilimnion and hypolimnion
 #' @param times vector of time information
+#' @param ice boolean, if TRUE the model will approximate ice on/off set, otherwise no ice
 #' @return matrix of simulated water temperatures in the pilimnion and hypolimnion
 #' @export
 #' @import deSolve 
 #' @import LakeMetabolizer
-run_model <- function(bc, params, ini, times){
+run_model <- function(bc, params, ini, times, ice = FALSE){
   Ve <- params[1] # epilimnion volume (cm3)
   Vh <- params[2] # hypolimnion volume (cm3)
   At <- params[3] # thermocline area (cm2)
@@ -152,6 +153,23 @@ run_model <- function(bc, params, ini, times){
     } else {
       dV <- (E0 / (1 + a * Ri)^(3/2))/(Ht/100) * (86400/10000) ** calParam
     }
+    if (ice == TRUE){
+      if (y[1] <= 0 && Tair(t) <= 0){
+        ice_param = 1e-5
+      } else {
+        ice_param = 1
+      }
+      # epilimnion water temperature change per time unit
+      dTe <-  Q / Ve * Tin -              # inflow heat
+        Q / Ve * y[1] +                   # outflow heat
+        ((dV * At) / Ve) * (y[2] - y[1]) + # mixing between epilimnion and hypolimnion
+        + As/(Ve * rho * cp) * ice_param * (
+          Jsw(t)  + # shortwave radiation
+            (sigma * (Tair(t) + 273)^4 * (Acoeff + 0.031 * sqrt(eair)) * (1 - Rl)) - # longwave radiation into the lake
+            (eps * sigma * (y[1] + 273)^4)  - # backscattering longwave radiation from the lake
+            (c1 * Uw(t) * (y[1] - Tair(t))) - # convection
+            (Uw(t) * ((es) - (eair))) )# evaporation
+    } else{
     
     # epilimnion water temperature change per time unit
     dTe <-  Q / Ve * Tin -              # inflow heat
@@ -163,7 +181,7 @@ run_model <- function(bc, params, ini, times){
           (eps * sigma * (y[1] + 273)^4)  - # backscattering longwave radiation from the lake
           (c1 * Uw(t) * (y[1] - Tair(t))) - # convection
           (Uw(t) * ((es) - (eair))) )# evaporation
-    
+    }
     # hypolimnion water temperature change per time unit
     dTh <-  ((dV * At) / Vh) * (y[1] - y[2]) 
     
@@ -180,7 +198,8 @@ run_model <- function(bc, params, ini, times){
     Rh <- RH
     E <- (E0 / (1 + a * Ri)^(3/2))
     
-    write.table(matrix(c(qin, qout, mix_e, mix_h, sw, lw, water_lw, conv, evap, Rh,E, Ri, t), nrow=1), 'output.txt', append = TRUE,
+    write.table(matrix(c(qin, qout, mix_e, mix_h, sw, lw, water_lw, conv, evap, Rh,E, Ri, t, ice_param), nrow=1), 
+                'output.txt', append = TRUE,
                 quote = FALSE, row.names = FALSE, col.names = FALSE)
     
     return(list(c(dTe, dTh)))

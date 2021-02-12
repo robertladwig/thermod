@@ -39,9 +39,13 @@ times <- seq(from = 1, to = max(boundary$Day), by = 1)
 # initial water temperatures
 yini <- c(3,3) 
 
-parameters[19] = 3.2 # calibration parameter
+if (file.exists('output.txt')){
+  file.remove('output.txt')
+}
 
-out <- run_model(bc = boundary, params = parameters, ini = yini, times = times)
+parameters[19] = 3.2 # calibration parameter
+ice_on = TRUE # ice "simulation" on or off?
+out <- run_model(bc = boundary, params = parameters, ini = yini, times = times, ice = ice_on)
 
 result <- data.frame('Time' = out[,1],
                      'WT_epi' = out[,2], 'WT_hyp' = out[,3])
@@ -58,7 +62,8 @@ output <- read.table('output.txt')
 output <- data.frame('qin'=output[,1],'qout'=output[,2],'mix_e'=output[,3],'mix_h'=output[,4],
                      'sw'=output[,5],'lw'=output[,6],'water_lw'=output[,7],'conv'=output[,8],
                      'evap'=output[,9], 'Rh' = output[,10],
-                     'entrain' = output[,11], 'Ri' = output[,12],'time' = output[,13])
+                     'entrain' = output[,11], 'Ri' = output[,12],'time' = output[,13],
+                     'ice' = output[,14])
 
 output$balance <- apply(output[,c(1:9)],1, sum)
 
@@ -97,8 +102,24 @@ g4 <- ggplot(boundary) +
   theme_bw()+
   theme(legend.position="bottom");g4
 
-g5 <- grid.arrange(g1, g2, g3, g4, ncol =1);g5
-ggsave(file='2L_visual_mendota.png', g5, dpi = 300,width = 200,height = 220, units = 'mm')
+if (ice_on){
+  ice_df = data.frame('time' = output$time)
+  ice_df$ice = ifelse(output$ice == 1, "off", "on")
+  g5 <- ggplot(ice_df) +
+    geom_point(aes(x = time,y = ice)) +
+    scale_colour_brewer("Boundary Conditions", palette="Set3") +
+    labs(x = 'Simulated Time', y = 'Ice on/off')  +
+    theme_bw()+
+    theme(legend.position="bottom");g5
+  
+  g6 <- grid.arrange(g1, g2, g3, g4, g5, ncol =1);g6
+  ggsave(file='2L_visual_mendota_ice.png', g6, dpi = 300,width = 200,height = 250, units = 'mm')
+} else {
+  g5 <- grid.arrange(g1, g2, g3, g4, ncol =1);g5
+  ggsave(file='2L_visual_mendota.png', g5, dpi = 300,width = 200,height = 220, units = 'mm')
+}
+
+
 
 
 obs <-read_delim(paste0('obs.txt'), delim = ',')

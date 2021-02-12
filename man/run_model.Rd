@@ -4,7 +4,7 @@
 \alias{run_model}
 \title{Simple two-layer water temperature model}
 \usage{
-run_model(bc, params, ini, times)
+run_model(bc, params, ini, times, ice = FALSE)
 }
 \arguments{
 \item{bc}{meteorological boundary conditions: day, shortwave radiation, air temperature, dew
@@ -15,6 +15,8 @@ point temperature, wind speed and wind shear stress}
 \item{ini}{vector of the initial water temperatures of the epilimnion and hypolimnion}
 
 \item{times}{vector of time information}
+
+\item{ice}{boolean, if TRUE the model will approximate ice on/off set, otherwise no ice}
 }
 \value{
 matrix of simulated water temperatures in the pilimnion and hypolimnion
