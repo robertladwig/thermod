@@ -110,7 +110,7 @@ configure_from_ler = function(config_file = 'LakeEnsemblR.yaml', folder = '.'){
 #' @param ini vector of the initial water temperatures of the epilimnion and hypolimnion
 #' @param times vector of time information
 #' @param ice boolean, if TRUE the model will approximate ice on/off set, otherwise no ice
-#' @return matrix of simulated water temperatures in the pilimnion and hypolimnion
+#' @return matrix of simulated water temperatures in the epilimnion and hypolimnion
 #' @export
 #' @import deSolve 
 #' @import LakeMetabolizer
@@ -214,6 +214,160 @@ run_model <- function(bc, params, ini, times, ice = FALSE){
   
   # runge-kutta 4th order
   out <- ode(times = times, y = ini, func = TwoLayer, parms = params, method = 'rk4')
+  
+  return(out)
+}
+
+
+#' Simple two-layer water temperature and oxygen model
+#'
+#' Runs a simple two-layer water temperature and oxygen model in dependence of meteorological 
+#' drivers and lake setup/configuration. The model automatically calculates summer stratification 
+#' onset and offset
+#'
+#' @param bc meteorological boundary conditions: day, shortwave radiation, air temperature, dew
+#' point temperature, wind speed and wind shear stress
+#' @param params configuration parameters 
+#' @param ini vector of the initial water temperatures of the epilimnion and hypolimnion
+#' @param times vector of time information
+#' @param ice boolean, if TRUE the model will approximate ice on/off set, otherwise no ice
+#' @return matrix of simulated water temperature and oxygen mass in the epilimnion and hypolimnion
+#' @export
+#' @import deSolve 
+#' @import LakeMetabolizer
+run_oxygen_model <- function(bc, params, ini, times, ice = FALSE){
+  Ve <- params[1] # epilimnion volume (cm3)
+  Vh <- params[2] # hypolimnion volume (cm3)
+  At <- params[3] # thermocline area (cm2)
+  Ht <- params[4] # thermocline thickness (cm)
+  As <- params[5] # surface area (cm2)
+  Tin <- params[6] # inflow water temperature (deg C)
+  Q <- params[7] # inflow discharge (deg C)
+  Rl <- params[8] # reflection coefficient (generally small, 0.03)
+  Acoeff <- params[9] # coefficient between 0.5 - 0.7
+  sigma <- params[10] # cal / (cm2 d K4) or: 4.9 * 10^(-3) # Stefan-Boltzmann constant in (J (m2 d K4)-1)
+  eps <- params[11] # emissivity of water
+  rho <- params[12] # density (g per cm3)
+  cp <- params[13] # specific heat (cal per gram per deg C)
+  c1 <- params[14] # Bowen's coefficient
+  a <- params[15] # constant
+  c <- params[16] # empirical constant
+  g <- params[17] # gravity (m/s2)
+  thermDep <- params[18] # thermocline depth (cm)
+  calParam <- params[19] # multiplier coefficient for calibrating the entrainment over the thermocline depth
+  Fnep <- params[20]
+  Fsed<- params[21]
+  Ased <- params[22]
+  diffred <- params[23]
+  
+  TwoLayer_oxy <- function(t, y, parms){
+    eair <- (4.596 * exp((17.27 * Dew(t)) / (237.3 + Dew(t)))) # air vapor pressure
+    esat <- 4.596 * exp((17.27 * Tair(t)) / (237.3 + Tair(t))) # saturation vapor pressure
+    RH <- eair/esat *100 # relative humidity
+    es <- 4.596 * exp((17.27 * y[1])/ (273.3+y[1]))
+    # diffusion coefficient
+    Cd <- 0.00052 * (vW(t))^(0.44)
+    shear <- 1.164/1000 * Cd * (vW(t))^2
+    rho_e <- calc_dens(y[1])/1000
+    rho_h <- calc_dens(y[2])/1000
+    w0 <- sqrt(shear/rho_e) 
+    E0  <- c * w0
+    Ri <- ((g/rho)*(abs(rho_e-rho_h)/10))/(w0/(thermDep)^2)
+    if (rho_e > rho_h){
+      dV = 100 * calParam
+      dV_oxy = dV/diffred
+      mult = 1/1000
+    } else {
+      dV <- (E0 / (1 + a * Ri)^(3/2))/(Ht/100) * (86400/10000) ** calParam
+      dV_oxy = dV/diffred
+      mult = 1
+    }
+    U10 <- wind.scale.base(vW(t), wnd.z = 10)
+    K600 <- k.cole.base(U10)
+    water.tmp = y[1]
+    kO2 <- k600.2.kGAS.base(k600=K600,
+                            temperature=water.tmp,
+                            gas='O2') * 100 # m/d * 100 cm/m
+    o2sat<-o2.at.sat.base(temp= water.tmp,
+                          altitude = 300)/1e3 # mg/L ==> g/m3 ==> mg O2 * 1000/cm3 * 1e6
+    
+    if (ice == TRUE){
+      if (y[1] <= 0 && Tair(t) <= 0){
+        ice_param = 1e-5
+      } else {
+        ice_param = 1
+      }
+      # epilimnion water temperature change per time unit
+      dTe <-  Q / Ve * Tin -              # inflow heat
+        Q / Ve * y[1] +                   # outflow heat
+        ((dV * At) / Ve) * (y[2] - y[1]) + # mixing between epilimnion and hypolimnion
+        + As/(Ve * rho * cp) * ice_param * (
+          Jsw(t)  + # shortwave radiation
+            (sigma * (Tair(t) + 273)^4 * (Acoeff + 0.031 * sqrt(eair)) * (1 - Rl)) - # longwave radiation into the lake
+            (eps * sigma * (y[1] + 273)^4)  - # backscattering longwave radiation from the lake
+            (c1 * Uw(t) * (y[1] - Tair(t))) - # convection
+            (Uw(t) * ((es) - (eair))) )# evaporation
+      ATM <- kO2*(o2sat  - y[3] /Ve) * (As) * ice_param# mg * cm/d * cm2/cm3= cmg/d
+    } else{
+      
+      # epilimnion water temperature change per time unit
+      dTe <-  Q / Ve * Tin -              # inflow heat
+        Q / Ve * y[1] +                   # outflow heat
+        ((dV * At) / Ve) * (y[2] - y[1]) + # mixing between epilimnion and hypolimnion
+        + As/(Ve * rho * cp) * (
+          Jsw(t)  + # shortwave radiation
+            (sigma * (Tair(t) + 273)^4 * (Acoeff + 0.031 * sqrt(eair)) * (1 - Rl)) - # longwave radiation into the lake
+            (eps * sigma * (y[1] + 273)^4)  - # backscattering longwave radiation from the lake
+            (c1 * Uw(t) * (y[1] - Tair(t))) - # convection
+            (Uw(t) * ((es) - (eair))) )# evaporation
+      ATM <- kO2*(o2sat  - y[3] /Ve) * (As) # mg/cm3 * cm/d * cm2= mg/d
+    }
+    # hypolimnion water temperature change per time unit
+    dTh <-  ((dV * At) / Vh) * (y[1] - y[2]) 
+    
+    
+        SED <- Fsed * Ased * 1.03^(y[2]-20) * mult # mg/m2/d * m2 # Fsed * y[4] * (Ased/Vh)  * 1.03^(y[2]-20) * mult  m/d * mg * m2/m3 = mg/d 
+
+        NEP <- 1.03^(y[1]-20) * Fnep * Ve * mult # mg/m3/d * m3
+
+        dOe <- ( NEP +
+          ATM +
+          ((dV_oxy  * At)) * (y[4]/Vh - y[3]/Ve))
+
+        dOh <- (( ((dV_oxy * At)) * (y[3]/Ve - y[4]/Vh) - SED))
+    
+    # diagnostic variables for plotting
+    mix_e <- ((dV * At) / Ve) * (y[2] - y[1])
+    mix_h <-  ((dV * At) / Vh) * (y[1] - y[2]) 
+    qin <- Q / Ve * Tin 
+    qout <- - Q / Ve * y[1] 
+    sw <- Jsw(t) 
+    lw <- (sigma * (Tair(t) + 273)^4 * (Acoeff + 0.031 * sqrt(eair)) * (1 - Rl))
+    water_lw <- - (eps * sigma * (y[1]+ 273)^4)
+    conv <- - (c1 * Uw(t) * (y[1] - Tair(t))) 
+    evap <- - (Uw(t) * ((esat) - (eair)))
+    Rh <- RH
+    E <- (E0 / (1 + a * Ri)^(3/2))
+    Oflux_epi <- ((dV_oxy  * At)) * (y[4]/Vh - y[3]/Ve)
+    Oflux_hypo <- ((dV_oxy * At)) * (y[3]/Ve - y[4]/Vh)
+
+    write.table(matrix(c(qin, qout, mix_e, mix_h, sw, lw, water_lw, conv, evap, Rh,E, Ri, t, ice_param,
+                         ATM, NEP, SED, Oflux_epi, Oflux_hypo), nrow=1), 
+                'output.txt', append = TRUE,
+                quote = FALSE, row.names = FALSE, col.names = FALSE)
+    
+    return(list(c(dTe, dTh,  dOe, dOh)))
+  }
+  
+  # approximating all boundary conditions  (linear interpolation)
+  Jsw <- approxfun(x = bc$Day, y = bc$Jsw, method = "linear", rule = 2)
+  Tair <- approxfun(x = bc$Day, y = bc$Tair, method = "linear", rule = 2)
+  Dew <- approxfun(x = bc$Day, y = bc$Dew, method = "linear", rule = 2)
+  Uw <- approxfun(x = bc$Day, y = bc$Uw, method = "linear", rule = 2)
+  vW <- approxfun(x = bc$Day, y = bc$vW, method = "linear", rule = 2)
+  
+  # runge-kutta 4th order
+  out <- ode(times = times, y = ini, func = TwoLayer_oxy, parms = params, method = 'rk4')
   
   return(out)
 }

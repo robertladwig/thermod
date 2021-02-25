@@ -165,3 +165,81 @@ g1 <- ggplot(result) +
   guides(col=guide_legend(title="Layer")) +
   theme(legend.position="bottom");g1
 ggsave(file='2L_compare_mendota.png', g1, dpi = 300,width = 300,height = 120, units = 'mm')
+
+
+# Oxygen test simulation
+# Fnep, Fsed, Ased, diffred 
+wq_parameters <- append(parameters, c(0.001 / 1000, 
+                                       100, 15000 * 1e4, 100))
+wq_parameters[19] = parameters[19] # calibration parameter
+# simulation maximum length
+times <- seq(from = 1, to = max(boundary$Day), by = 1)
+# initial water temperatures
+yini <- c(3,3, 10 * 1000/1e6  * wq_parameters[1], 10 * 1000/1e6  * wq_parameters[2]) 
+
+if (file.exists('output.txt')){
+  file.remove('output.txt')
+}
+
+
+ice_on = TRUE # ice "simulation" on or off?
+out <- run_oxygen_model(bc = boundary, params = wq_parameters, ini = yini, times = times, ice = ice_on)
+
+result <- data.frame('Time' = out[,1],
+                     'WT_epi' = out[,2], 'WT_hyp' = out[,3],
+                     'DO_epi' = out[,4], 'DO_hyp' = out[,5])
+head(result)
+
+go1 <- ggplot(result) +
+  geom_line(aes(x=Time, y=DO_epi / 1000 /  wq_parameters[1] * 1e6, col='Surface Mixed Layer')) +
+  geom_line(aes(x=(Time), y=DO_hyp / 1000 /  wq_parameters[2] * 1e6, col='Bottom Layer')) +
+  labs(x = 'Simulated Time', y = 'DO in g/m3')  +
+  theme_bw()+
+  guides(col=guide_legend(title="Layer")) +
+  theme(legend.position="bottom");go1
+
+obs <-read_delim(paste0('obs_oxygen.txt'), delim = ',')
+simple_therm_depth = parameters[18]
+start_date <- get_yaml_value(config_file, "time", "start")
+stop_date <- get_yaml_value(config_file, "time", "stop")
+
+### EITHER COMPARE AGAINST SPECIFIC DEPTHS
+obs_sfc <- obs %>%
+  filter(Depth_meter == 1) %>%
+  mutate('date' = yday(datetime),
+         'sfc' = Dissolved_Oxygen_gPerCubicMeter )
+obs_sfc$time = match(as.Date(obs_sfc$datetime), seq(as.Date(start_date), as.Date(stop_date), by = 'day'))
+obs_btm <- obs %>%
+  filter(Depth_meter == 20) %>%
+  mutate('date' = yday(datetime),
+         'btm' = Dissolved_Oxygen_gPerCubicMeter ) 
+obs_btm$time = match(as.Date(obs_btm$datetime), seq(as.Date(start_date), as.Date(stop_date), by = 'day'))
+
+### OR COMPARE AGAINST AVERAGE OBSERVED DATA 
+obs_sfc <- obs %>%
+  filter(Depth_meter <= simple_therm_depth) %>%
+  mutate('date' = yday(datetime),
+         'sfc' = Dissolved_Oxygen_gPerCubicMeter ) %>%
+  group_by(datetime) %>%
+  summarise('do_avg' = mean(sfc, na.rm = TRUE))
+obs_sfc$time = match(as.Date(obs_sfc$datetime), seq(as.Date(start_date), as.Date(stop_date), by = 'day'))
+obs_btm <- obs %>%
+  filter(Depth_meter >= simple_therm_depth) %>%
+  mutate('date' = yday(datetime),
+         'btm' = Dissolved_Oxygen_gPerCubicMeter ) %>%
+  group_by(datetime) %>%
+  summarise('do_avg' = mean(btm, na.rm = TRUE))
+obs_btm$time = match(as.Date(obs_btm$datetime), seq(as.Date(start_date), as.Date(stop_date), by = 'day'))
+
+go2 <- ggplot(result) +
+  geom_line(aes(x=Time, y=DO_epi / 1000 /  wq_parameters[1] * 1e6, col='Surface Mixed Layer (model)'), col = 'red') +
+  geom_line(aes(x=(Time), y=DO_hyp / 1000 /  wq_parameters[2] * 1e6, col='Bottom Layer (model)'), col = 'blue') +
+  geom_point(data = obs_sfc, aes(x=time, y=do_avg, col='Surface Mixed Layer (obs)'), col = 'red',linetype = "dashed") + # sfc
+  geom_point(data = obs_btm, aes(x=(time), y=do_avg, col='Bottom Layer (obs)'), col = 'blue',linetype = "dashed") + # btm
+  labs(x = 'Simulated Time', y = 'DO in g/m3')  +
+  theme_bw()+
+  guides(col=guide_legend(title="Layer")) +
+  theme(legend.position="bottom");go2
+
+go7 <- grid.arrange(go1, go2, ncol =1);go7
+ggsave(file='2L_visual_mendota_oxygen.png', go7, dpi = 300,width = 200,height = 250, units = 'mm')
