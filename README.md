@@ -1,9 +1,12 @@
 # thermod
 <a href="https://github.com/robertladwig/thermod"><img src="images/thermod.png" align="right" height="220" width="220" ></a>
 
-thermod is a simple two-layer water temperature model that assumes that the lake is divided into two volumes: the epilimnion and the hypolimnion. Both layers are divided by a thermocline zone. The entrainment over the thermocline depends on a diffusion coefficient which is a function of the diffusion at neutral stability to the Richardson number.
+thermod is a simple two-layer water temperature model that assumes that the lake is divided into two volumes: the epilimnion and the hypolimnion. Both layers are divided by a thermocline zone. The entrainment over the thermocline depends on a diffusion coefficient which is a function of the diffusion at neutral stability to the Richardson number. All equations and derivations are from Steven C. Chapra (2008) 'Surface Water-Quality Modeling' Waveland Press, Inc.
 
-All equations and derivations are from Steven C. Chapra (2008) 'Surface Water-Quality Modeling' Waveland Press, Inc.
+thermod allows you to
+- simulate water temepratures in the epilimnion and hypolimnion as a function of meteorological forcing data
+- simulate if the lake is stratified or mixed based on modeled water temperatures
+- (experimental) simulate dissolved oxygen concentration in the epilimnion and hypolimnion
 
 You can run a toy model using the example.R script in `/inst/scripts`. The package also includes example setups for Lough Feeagh (IR) and Lake Mendota (USA).
 
