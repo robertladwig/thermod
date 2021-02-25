@@ -276,7 +276,7 @@ run_oxygen_model <- function(bc, params, ini, times, ice = FALSE){
     if (rho_e > rho_h){
       dV = 100 * calParam
       dV_oxy = dV/diffred
-      mult = 1/1000
+      mult = 1.#1/1000
     } else {
       dV <- (E0 / (1 + a * Ri)^(3/2))/(Ht/100) * (86400/10000) ** calParam
       dV_oxy = dV/diffred
@@ -326,7 +326,7 @@ run_oxygen_model <- function(bc, params, ini, times, ice = FALSE){
     dTh <-  ((dV * At) / Vh) * (y[1] - y[2]) 
     
     
-        SED <- Fsed * Ased * 1.03^(y[2]-20) * mult # mg/m2/d * m2 # Fsed * y[4] * (Ased/Vh)  * 1.03^(y[2]-20) * mult  m/d * mg * m2/m3 = mg/d 
+        SED <- Fsed * Ased * 1.03^(y[2]-20) * (y[4]/Vh/(0.5/1000 + y[4]/Vh))* mult # mg/m2/d * m2 # Fsed * y[4] * (Ased/Vh)  * 1.03^(y[2]-20) * mult  m/d * mg * m2/m3 = mg/d 
 
         NEP <- 1.03^(y[1]-20) * Fnep * Ve * mult # mg/m3/d * m3
 
