@@ -22,7 +22,7 @@ bound <- read_delim(paste0(folder,'/meteo.txt'), delim = '\t')
 colnames(bound) <- c('Day','Jsw','Tair','Dew','vW')
 
 # function to calculate wind shear stress (and transforming wind speed from km/h to m/s)
-bound$Uw <- 19.0 + 0.95 * (bound$vW * 1000/3600)^2 
+bound$Uw <- 19.0 + 0.95 * (bound$vW * 1000/3600)^2
 bound$vW <- bound$vW * 1000/3600
 
 boundary <- bound
@@ -31,7 +31,7 @@ boundary <- bound
 times <- seq(from = 1, to = max(boundary$Day), by = 1)
 
 # initial water temperatures
-yini <- c(3,3) 
+yini <- c(3,3)
 
 # run the model
 out <- run_model(bc = boundary, params = parameters, ini = yini, times = times)
@@ -53,3 +53,5 @@ A comparison between modeled epilimnion (red solid line) and hypolimnion (blue s
 
 ![](inst/mendota/2L_compare_mendota.png)<!-- -->
 
+The model can also simulate oxygen dynamics using simplified assumptions (atmospheric exchange, constant NEP, constant sediment oxygen demand, and entrainment over the thermocline):
+![](images/oxygen.png)<!-- -->
