@@ -232,15 +232,16 @@ obs_btm <- obs %>%
 obs_btm$time = match(as.Date(obs_btm$datetime), seq(as.Date(start_date), as.Date(stop_date), by = 'day'))
 
 go2 <- ggplot(result) +
-  geom_line(aes(x=Time, y=DO_epi / 1000 /  wq_parameters[1] * 1e6, col='Surface Mixed Layer (model)'), col = 'red') +
-  geom_line(aes(x=(Time), y=DO_hyp / 1000 /  wq_parameters[2] * 1e6, col='Bottom Layer (model)'), col = 'blue') +
-  geom_point(data = obs_sfc, aes(x=time, y=do_avg, col='Surface Mixed Layer (obs)'), col = 'red',linetype = "dashed") + # sfc
-  geom_point(data = obs_btm, aes(x=(time), y=do_avg, col='Bottom Layer (obs)'), col = 'blue',linetype = "dashed") + # btm
+  geom_line(aes(x=Time, y=DO_epi / 1000 /  wq_parameters[1] * 1e6, col='Surface Mixed Layer (model)')) +
+  geom_line(aes(x=(Time), y=DO_hyp / 1000 /  wq_parameters[2] * 1e6, col='Bottom Layer (model)')) +
+  geom_point(data = obs_sfc, aes(x=time, y=do_avg, col='Surface Mixed Layer (obs)'),linetype = "dashed") + # sfc
+  geom_point(data = obs_btm, aes(x=(time), y=do_avg, col='Bottom Layer (obs)'),linetype = "dashed") + # btm
   labs(x = 'Simulated Time', y = 'DO in g/m3')  +
+  scale_color_manual(values = c('blue','blue','red','red')) +
   theme_bw()+
   guides(col=guide_legend(title="Layer")) +
   theme(legend.position="bottom");go2
-# ggsave(file='oxygen.png', go2, dpi = 300,width = 300,height = 120, units = 'mm')
+# ggsave(file='../../images/oxygen.png', go2, dpi = 300,width = 300,height = 120, units = 'mm')
 
 go7 <- grid.arrange(go1, go2, ncol =1);go7
 ggsave(file='2L_visual_mendota_oxygen.png', go7, dpi = 300,width = 200,height = 250, units = 'mm')
