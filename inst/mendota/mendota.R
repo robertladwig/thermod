@@ -240,6 +240,7 @@ go2 <- ggplot(result) +
   theme_bw()+
   guides(col=guide_legend(title="Layer")) +
   theme(legend.position="bottom");go2
+# ggsave(file='oxygen.png', go2, dpi = 300,width = 300,height = 120, units = 'mm')
 
 go7 <- grid.arrange(go1, go2, ncol =1);go7
 ggsave(file='2L_visual_mendota_oxygen.png', go7, dpi = 300,width = 200,height = 250, units = 'mm')
