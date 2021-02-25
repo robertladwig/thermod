@@ -151,7 +151,7 @@ run_model <- function(bc, params, ini, times, ice = FALSE){
     if (rho_e > rho_h){
       dV = 100 * calParam
     } else {
-      dV <- (E0 / (1 + a * Ri)^(3/2))/(Ht/100) * (86400/10000) ** calParam
+      dV <- (E0 / (1 + a * Ri)^(3/2))/(Ht/100) * (86400/10000) * calParam
     }
     if (ice == TRUE){
       if (y[1] <= 0 && Tair(t) <= 0){
@@ -278,7 +278,7 @@ run_oxygen_model <- function(bc, params, ini, times, ice = FALSE){
       dV_oxy = dV/diffred
       mult = 1.#1/1000
     } else {
-      dV <- (E0 / (1 + a * Ri)^(3/2))/(Ht/100) * (86400/10000) ** calParam
+      dV <- (E0 / (1 + a * Ri)^(3/2))/(Ht/100) * (86400/10000) * calParam
       dV_oxy = dV/diffred
       mult = 1
     }
