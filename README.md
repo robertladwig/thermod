@@ -8,6 +8,12 @@ thermod allows you to
 - simulate if the lake is stratified or mixed based on modeled water temperatures
 - (experimental) simulate dissolved oxygen concentration in the epilimnion and hypolimnion
 
+You can install the package in R using these commands:
+```
+require(devtools)
+devtools::install_github("robertladwig/thermod")
+```
+
 You can run a toy model using the example.R script in `/inst/scripts`. The package also includes example setups for Lough Feeagh (IR) and Lake Mendota (USA).
 
 If you already have a [LakeEnsemblR configuration](https://github.com/aemon-j/LakeEnsemblR) of your lake (you can also find [examples here](https://github.com/aemon-j/LER_examples)), you can easily run the model with these files natively in R:
@@ -58,3 +64,7 @@ A comparison between modeled epilimnion (red solid line) and hypolimnion (blue s
 
 The model can also simulate oxygen dynamics using simplified assumptions (atmospheric exchange, constant NEP, constant sediment oxygen demand, and entrainment over the thermocline):
 ![](images/oxygen.png)<!-- -->
+
+All Lake Mendota data is from the NTL LTER long-term monitoring program:
+N. Lead PI, J. Magnuson, S. Carpenter, and E. Stanley. 2019. North Temperate Lakes LTER: Physical Limnology of Primary Study Lakes 1981 - current ver 27. Environmental Data Initiative. https://doi.org/10.6073/pasta/c120b223f80c63982457a2e1e76f6038 (Accessed 2021-02-26).
+N. Lead PI, J. Magnuson, S. Carpenter, and E. Stanley. 2020. North Temperate Lakes LTER: Chemical Limnology of Primary Study Lakes: Nutrients, pH and Carbon 1981 - current ver 52. Environmental Data Initiative. https://doi.org/10.6073/pasta/8359d27bbd91028f222d923a7936077d (Accessed 2021-02-26).
