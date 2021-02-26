@@ -66,5 +66,7 @@ The model can also simulate oxygen dynamics using simplified assumptions (atmosp
 ![](images/oxygen.png)<!-- -->
 
 All Lake Mendota data is from the NTL LTER long-term monitoring program:
+
 N. Lead PI, J. Magnuson, S. Carpenter, and E. Stanley. 2019. North Temperate Lakes LTER: Physical Limnology of Primary Study Lakes 1981 - current ver 27. Environmental Data Initiative. https://doi.org/10.6073/pasta/c120b223f80c63982457a2e1e76f6038 (Accessed 2021-02-26).
+
 N. Lead PI, J. Magnuson, S. Carpenter, and E. Stanley. 2020. North Temperate Lakes LTER: Chemical Limnology of Primary Study Lakes: Nutrients, pH and Carbon 1981 - current ver 52. Environmental Data Initiative. https://doi.org/10.6073/pasta/8359d27bbd91028f222d923a7936077d (Accessed 2021-02-26).
