@@ -156,16 +156,16 @@ obs_btm <- obs %>%
 obs_btm$time = match(as.Date(obs_btm$datetime), seq(as.Date(start_date), as.Date(stop_date), by = 'day'))
 
 g1 <- ggplot(result) +
-  geom_line(aes(x=Time, y=WT_epi, col='Surface Mixed Layer (model)'), col = 'red') +
-  geom_line(aes(x=(Time), y=WT_hyp, col='Bottom Layer (model)'), col = 'blue') +
-  geom_point(data = obs_sfc, aes(x=time, y=wtr_avg, col='Surface Mixed Layer (obs)'), col = 'red',linetype = "dashed") + # sfc
-  geom_point(data = obs_btm, aes(x=(time), y=wtr_avg, col='Bottom Layer (obs)'), col = 'blue',linetype = "dashed") + # btm
+  geom_line(aes(x=Time, y=WT_epi, col='Surface Mixed Layer (model)')) +
+  geom_line(aes(x=(Time), y=WT_hyp, col='Bottom Layer (model)')) +
+  geom_point(data = obs_sfc, aes(x=time, y=wtr_avg, col='Surface Mixed Layer (obs)'),linetype = "dashed") + # sfc
+  geom_point(data = obs_btm, aes(x=(time), y=wtr_avg, col='Bottom Layer (obs)'), linetype = "dashed") + # btm
   labs(x = 'Simulated Time', y = 'WT in deg C')  +
+  scale_color_manual(values = c('blue','blue','red','red')) +
   theme_bw()+
   guides(col=guide_legend(title="Layer")) +
   theme(legend.position="bottom");g1
 ggsave(file='2L_compare_mendota.png', g1, dpi = 300,width = 300,height = 120, units = 'mm')
-
 
 # Oxygen test simulation
 # Fnep, Fsed, Ased, diffred 
