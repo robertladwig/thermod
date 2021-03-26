@@ -29,6 +29,37 @@ add_noise <- function(bc){
   return(bc)
 }
 
+#' Smoothing of time series
+#'
+#' Filters the signal using a Kalman filter
+#'
+#' @param bc vector or matrix; meteorological boundary conditions
+#' @return vector or matrix; meteorological boundary conditions with noise
+#' @export
+kalman_filtering <- function(time, series){
+  state = rep(NA, length(time))
+  uncertainty = state
+  for (i in 1:length(time)){
+    if (i == 1) {
+      x = series[1]
+      sigma0 = 10
+      est_p = sigma0^2
+      q = 1e-4
+    } else {
+      x = x
+      est_p = est_p + q
+      meas_p = 0.1^2
+      K = est_p / (est_p + meas_p)
+      x = x + K * (series[i] - x)
+      est_p = (1 - K) * est_p
+    }
+    state[i] = x
+    uncertainty[i] = est_p
+  }
+  return(state)
+}
+
+
 
 #' Configure model with LakeEnsemblR data
 #'

@@ -167,6 +167,21 @@ g1 <- ggplot(result) +
   theme(legend.position="bottom");g1
 ggsave(file='2L_compare_mendota.png', g1, dpi = 300,width = 300,height = 120, units = 'mm')
 
+result_filter = result
+result_filter$WT_epi = kalman_filtering(time = result_filter$Time, series = result_filter$WT_epi)
+result_filter$WT_hyp = kalman_filtering(time = result_filter$Time, series = result_filter$WT_hyp)
+g1 <- ggplot(result_filter) +
+  geom_line(aes(x=Time, y=WT_epi, col='Surface Mixed Layer (model)')) +
+  geom_line(aes(x=(Time), y=WT_hyp, col='Bottom Layer (model)')) +
+  geom_point(data = obs_sfc, aes(x=time, y=wtr_avg, col='Surface Mixed Layer (obs)'),linetype = "dashed") + # sfc
+  geom_point(data = obs_btm, aes(x=(time), y=wtr_avg, col='Bottom Layer (obs)'), linetype = "dashed") + # btm
+  labs(x = 'Simulated Time', y = 'WT in deg C')  +
+  scale_color_manual(values = c('blue','blue','red','red')) +
+  theme_bw()+
+  guides(col=guide_legend(title="Layer")) +
+  theme(legend.position="bottom");g1
+ggsave(file='2L_compare_mendota_filter.png', g1, dpi = 300,width = 300,height = 120, units = 'mm')
+
 # Oxygen test simulation
 # Fnep, Fsed, Ased, diffred 
 wq_parameters <- append(parameters, c(0.001 / 1000, 
