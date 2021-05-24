@@ -23,7 +23,8 @@ add_noise <- function(bc){
   for (ii in 2:ncol(bc)){
     corrupt <- rbinom(nrow(bc),1,0.1)    # choose an average of 10% to corrupt at random
     corrupt <- as.logical(corrupt)
-    noise <- rnorm(sum(corrupt),mean = mean(bc[,ii]),sd=sd(bc[,ii])/10)
+    noise <- rnorm(sum(corrupt), mean = mean(as.numeric(unlist(bc[,ii])), na.rm = TRUE),
+                   sd = sd(as.numeric(unlist(bc[,ii])),na.rm = TRUE)/10)
     bc[corrupt,ii] <- bc[corrupt,ii] +  noise
   }
   return(bc)
