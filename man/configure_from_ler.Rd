@@ -4,7 +4,11 @@
 \alias{configure_from_ler}
 \title{Configure model with LakeEnsemblR data}
 \usage{
-configure_from_ler(config_file = "LakeEnsemblR.yaml", folder = ".")
+configure_from_ler(
+  config_file = "LakeEnsemblR.yaml",
+  folder = ".",
+  mode = NULL
+)
 }
 \arguments{
 \item{config_file}{string of your LER configuration file}
