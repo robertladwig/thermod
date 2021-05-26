@@ -424,7 +424,8 @@ run_oxygen_model <- function(bc, params, ini, times, ice = FALSE){
 #' @export
 #' @import deSolve 
 #' @import LakeMetabolizer
-run_oxygen_forecast <- function(bc, params, ini, times, ice = FALSE){
+run_temp_oxygen_forecast <- function(bc, params, ini, times, ice = FALSE, 
+                                     observed){
   Ve <- params[1] # epilimnion volume (cm3)
   Vh <- params[2] # hypolimnion volume (cm3)
   At <- params[3] # thermocline area (cm2)
@@ -449,7 +450,9 @@ run_oxygen_forecast <- function(bc, params, ini, times, ice = FALSE){
   Ased <- params[22]
   diffred <- params[23]
   
-  TwoLayer_oxy_forecast <- function(t, y, parms){
+  OneLayer_forecast <- function(t, y, parms){
+    Q <- parms[7]
+    Fnep <- parms[20]
     eair <- (4.596 * exp((17.27 * Dew(t)) / (237.3 + Dew(t)))) # air vapor pressure
     esat <- 4.596 * exp((17.27 * Tair(t)) / (237.3 + Tair(t))) # saturation vapor pressure
     RH <- eair/esat *100 # relative humidity
@@ -488,7 +491,7 @@ run_oxygen_forecast <- function(bc, params, ini, times, ice = FALSE){
         ice_param = 1
       }
       # epilimnion water temperature change per time unit
-      dTe <-  As/(Ve * rho * cp) * ice_param * (
+      dTe <- Q / Ve * y[1] + As/(Ve * rho * cp) * ice_param * (
           Jsw(t)  + # shortwave radiation
             (sigma * (Tair(t) + 273)^4 * (Acoeff + 0.031 * sqrt(eair)) * (1 - Rl)) - # longwave radiation into the lake
             (eps * sigma * (y[1] + 273)^4)  - # backscattering longwave radiation from the lake
@@ -498,7 +501,7 @@ run_oxygen_forecast <- function(bc, params, ini, times, ice = FALSE){
     } else{
       
       # epilimnion water temperature change per time unit
-      dTe <-  As/(Ve * rho * cp) * (
+      dTe <-  Q / Ve * y[1] + As/(Ve * rho * cp) * (
           Jsw(t)  + # shortwave radiation
             (sigma * (Tair(t) + 273)^4 * (Acoeff + 0.031 * sqrt(eair)) * (1 - Rl)) - # longwave radiation into the lake
             (eps * sigma * (y[1] + 273)^4)  - # backscattering longwave radiation from the lake
@@ -541,7 +544,70 @@ run_oxygen_forecast <- function(bc, params, ini, times, ice = FALSE){
   vW <- approxfun(x = bc$Day, y = bc$vW, method = "linear", rule = 2)
   
   # runge-kutta 4th order
-  out <- ode(times = times, y = ini, func = TwoLayer_oxy_forecast, parms = params, method = 'rk4')
+  # out <- ode(times = times, y = ini, func = OneLayer_forecast, parms = params, method = 'rk4')
   
-  return(out)
+  out_total <- c()
+  idx <- which(!is.na(observed$WT_obs))
+  idstart <- 1
+  q_par <- params[7]
+  nep_par <- params[20]
+  for (nn in which(!is.na(observed$WT_obs))[2:length(which(!is.na(observed$WT_obs)))]){
+    idstop = nn
+    result <- matrix(NA, nrow = 100, ncol =2)
+    param_matrix <- matrix(NA, nrow = 100, ncol =2)
+    for (random_run in 1:100){
+      params[7] <- rnorm(n = 1, mean = q_par, sd = 1e8)
+      while(is.na(params[7])){
+        params[7] <- rnorm(n = 1, mean = q_par, sd =  1e8)
+      }
+      params[20] <-  rnorm(n = 1, mean = nep_par, sd =  1e-5)
+      while(is.na(params[20])){
+        params[20] <-  rnorm(n = 1, mean = nep_par, sd = 1e-5)
+      }
+      out <- ode(times = c(idstart:idstop), y = ini, func = OneLayer_forecast, parms = params, method = 'rk4')
+      nrmse_temp <- sqrt(sum((out[,2]- observed$WT_obs[idstart:idstop])^2)/(nrow(out)))/(max(out[,2]) - min(out[,2]))
+      nrmse_do <- sqrt(sum((out[,3]/ 1000 /  params[1] * 1e6 - observed$DO_obs[idstart:idstop])^2)/nrow(out))/(max(out[,3]) - min(out[,3]))
+      result[random_run,] <- c(nrmse_temp, nrmse_do)
+      param_matrix[random_run,] <- c(params[7], params[20])
+    }
+    sum_result <- apply(result, 1, function(x) sum(x,na.rm = TRUE))
+    id_row <- which.min(sum_result)
+    
+    # q_par <- param_matrix[id_row, 1]
+    # nep_par <- param_matrix[id_row, 2]
+    # params[7] <- q_par
+    # params[20] <-  nep_par
+
+    params[7] <- param_matrix[id_row, 1]
+    params[20] <-  nep_par <- param_matrix[id_row, 2]
+    
+    out <- ode(times = c(idstart:idstop), y = ini, func = OneLayer_forecast, parms = params, method = 'rk4')
+    
+    if (match(nn, which(!is.na(observed$WT_obs))[2:length(which(!is.na(observed$WT_obs)))]) == 1){
+      out_total <- rbind(out_total, out) 
+    } else {
+      out_total <- rbind(out_total, out[-c(1),]) 
+    }
+    
+    
+    # print(params[7])
+    # print(params[20])
+    # print(out)
+    print(paste0(match(nn, which(!is.na(observed$WT_obs))[2:length(which(!is.na(observed$WT_obs)))]),'/',
+                 length(which(!is.na(observed$WT_obs))[2:length(which(!is.na(observed$WT_obs)))]),
+                 '; NRMSE: ',round(sum_result[id_row],5)))
+    # print(paste0('NRMSE: ',sum_result[id_row]))
+    # print(out[nrow(out), 2:3])
+    
+    idstart = nn
+    ini <- out[nrow(out), 2:3]
+    ini[1] <- rnorm(n = 1, mean = observed$WT_obs[idstop], sd = 0.1)
+  }
+  
+  if (max(times) > idstart){
+    out <- ode(times = c(idstart:max(times)), y = ini, func = OneLayer_forecast, parms = params, method = 'rk4')
+    out_total <- rbind(out_total,  out[-c(1),])
+  }
+  
+  return(out_total)
 }
