@@ -557,9 +557,9 @@ run_temp_oxygen_forecast <- function(bc, params, ini, times, ice = FALSE,
       params[7] <- param_matrix[id_row1, 1]
       
     for (random_run2 in 1:100){
-      params[20] <-  rnorm(n = 1, mean = nep_par, sd =  1e-6)
+      params[20] <-  rnorm(n = 1, mean = nep_par, sd =  1e-7)
       while(is.na(params[20])){
-        params[20] <-  rnorm(n = 1, mean = nep_par, sd = 1e-6)
+        params[20] <-  rnorm(n = 1, mean = nep_par, sd = 1e-7)
       }
       out <- ode(times = c(idstart:idstop), y = ini, func = OneLayer_forecast, parms = params, method = 'rk4')
       nrmse_do <- sqrt(sum((out[,3]/ 1000 /  params[1] * 1e6 - observed$DO_obs[idstart:idstop])^2, na.rm = TRUE)/nrow(out))/(max(out[,3]) - min(out[,3]))    
@@ -579,10 +579,13 @@ run_temp_oxygen_forecast <- function(bc, params, ini, times, ice = FALSE,
     # params[20] <-  nep_par
 
     params[7] <- param_matrix[id_row1, 1]
+    q_par = params[7]
     if (length(id_row2) > 0){
       params[20] <- param_matrix[id_row2, 2]
+      nep_par <- params[20]
     } else {
       params[20] <- param_matrix[id_row1, 2]
+      nep_par <- params[20]
     }
     
     
@@ -597,6 +600,8 @@ run_temp_oxygen_forecast <- function(bc, params, ini, times, ice = FALSE,
     print(paste0(match(nn, which(!is.na(observed$WT_obs))[2:length(which(!is.na(observed$WT_obs)))]),'/',
                  length(which(!is.na(observed$WT_obs))[2:length(which(!is.na(observed$WT_obs)))]),
                  '; WTR NRMSE: ',round(result[id_row1],5)))
+    print(q_par)
+    print(nep_par)
     
     idstart = nn
     ini <- out[nrow(out), 2:3]
@@ -610,9 +615,9 @@ run_temp_oxygen_forecast <- function(bc, params, ini, times, ice = FALSE,
       while(is.na(params[7])){
         params[7] <- rnorm(n = 1, mean = q_par, sd =  1e8)
       }
-      params[20] <-  rnorm(n = 1, mean = nep_par, sd =  1e-6)
+      params[20] <-  rnorm(n = 1, mean = nep_par, sd =  1e-7)
       while(is.na(params[20])){
-        params[20] <-  rnorm(n = 1, mean = nep_par, sd = 1e-6)
+        params[20] <-  rnorm(n = 1, mean = nep_par, sd = 1e-7)
       }
       out <- ode(times = c(idstart:max(times)), y = ini, func = OneLayer_forecast, parms = params, method = 'rk4')
       out_df <- rbind(out_total,  out[-c(1),])
