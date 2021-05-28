@@ -535,89 +535,98 @@ run_temp_oxygen_forecast <- function(bc, params, ini, times, ice = FALSE,
   idstart <- 1
   q_par <- params[7]
   nep_par <- params[20]
-  for (nn in which(!is.na(observed$WT_obs))[2:length(which(!is.na(observed$WT_obs)))]){
+ 
+  for (nn in which(!is.na(observed[,2]) | !is.na(observed[,3]))[2:length( which(!is.na(observed[,2]) | !is.na(observed[,3])))]){
+    #which(!is.na(observed$WT_obs))[2:length(which(!is.na(observed$WT_obs)))]
+    # which(!is.na(observed[,2:3]))[2:length(which(!is.na(observed[,2:3])))]
     idstop = nn
     result <- matrix(NA, nrow = 100, ncol =2)
     param_matrix <- matrix(NA, nrow = 100, ncol =2)
-    for (random_run in 1:100){
-      params[7] <- rnorm(n = 1, mean = q_par, sd = 1e8)
-      while(is.na(params[7])){
-        params[7] <- rnorm(n = 1, mean = q_par, sd =  1e8)
-      }
-
-      out <- ode(times = c(idstart:idstop), y = ini, func = OneLayer_forecast, parms = params, method = 'rk4')
-      nrmse_temp <- sqrt(sum((out[,2]- observed$WT_obs[idstart:idstop])^2, na.rm = TRUE)/(nrow(out)))/(max(out[,2]) - min(out[,2]))
-      # nrmse_do <- sqrt(sum((out[,3]/ 1000 /  params[1] * 1e6 - observed$DO_obs[idstart:idstop])^2)/nrow(out))/(max(out[,3]) - min(out[,3]))
-      result[random_run,1] <- nrmse_temp #, nrmse_do)
-      param_matrix[random_run,1] <- params[7] # params[20])
-    }
-      # sum_result <- apply(result, 1, function(x) sum(x,na.rm = TRUE))
-      id_row1 <- which.min(result[,1])
-      
-      params[7] <- param_matrix[id_row1, 1]
-      
-    for (random_run2 in 1:100){
-      params[20] <-  rnorm(n = 1, mean = nep_par, sd =  1e-7)
-      while(is.na(params[20])){
-        params[20] <-  rnorm(n = 1, mean = nep_par, sd = 1e-7)
-      }
-      out <- ode(times = c(idstart:idstop), y = ini, func = OneLayer_forecast, parms = params, method = 'rk4')
-      nrmse_do <- sqrt(sum((out[,3]/ 1000 /  params[1] * 1e6 - observed$DO_obs[idstart:idstop])^2, na.rm = TRUE)/nrow(out))/(max(out[,3]) - min(out[,3]))    
-      
-      result[random_run2,2] <- nrmse_do #, nrmse_do)
-      param_matrix[random_run2,2] <- params[20] # params[20])
-      }
-  
-    id_row2 <- which.min(result[,2])
-      
-    # sum_result <- apply(result, 1, function(x) sum(x,na.rm = TRUE))
-    # id_row <- which.min(sum_result)
+    id_row1 = 1
+    id_row2 = 1
     
-    # q_par <- param_matrix[id_row, 1]
-    # nep_par <- param_matrix[id_row, 2]
-    # params[7] <- q_par
-    # params[20] <-  nep_par
+    if ( !is.na(observed$WT_obs[idstop])){
+      for (random_run in 1:100){
+        params[7] <- rnorm(n = 1, mean = q_par, sd = 1e7)
+        while(is.na(params[7])){
+          params[7] <- rnorm(n = 1, mean = q_par, sd =  1e7)
+        }
+        out <- ode(times = c(idstart:idstop), y = ini, func = OneLayer_forecast, parms = params, method = 'rk4')
+        nrmse_temp <- sqrt(sum((out[,2]- observed$WT_obs[idstart:idstop])^2, na.rm = TRUE)/(nrow(out)))/(max(out[,2]) - min(out[,2]))
+        result[random_run,1] <- nrmse_temp 
+        param_matrix[random_run,1] <- params[7] 
+      }
+      
+      id_row1 <- which.min(result[,1])
+      params[7] <- param_matrix[id_row1, 1]
+      q_par = params[7]
+      
+    }
 
-    params[7] <- param_matrix[id_row1, 1]
-    q_par = params[7]
-    if (length(id_row2) > 0){
+    if (!is.na(observed$DO_obs[idstop])){
+      for (random_run2 in 1:100){
+        params[20] <-  rnorm(n = 1, mean = nep_par, sd =  1e-5)
+        while(is.na(params[20])){
+          params[20] <-  rnorm(n = 1, mean = nep_par, sd = 1e-5)
+        }
+        out <- ode(times = c(idstart:idstop), y = ini, func = OneLayer_forecast, parms = params, method = 'rk4')
+        nrmse_do <- sqrt(sum((out[,3]/ 1000 /  params[1] * 1e6 - observed$DO_obs[idstart:idstop])^2, na.rm = TRUE)/nrow(out))/((max(out[,3]) - min(out[,3]))/ 1000 /  params[1] * 1e6 )    
+        
+        result[random_run2,2] <- nrmse_do #, nrmse_do)
+        param_matrix[random_run2,2] <- params[20] # params[20])
+      }
+      
+      id_row2 <- which.min(result[,2])
       params[20] <- param_matrix[id_row2, 2]
       nep_par <- params[20]
-    } else {
-      params[20] <- param_matrix[id_row1, 2]
-      nep_par <- params[20]
     }
-    
+
+    # params[7] <- param_matrix[id_row1, 1]
+    # 
+    # if (length(id_row2) > 0){
+    #   
+    # } else {
+    #   params[20] <- param_matrix[id_row1, 2]
+    #   nep_par <- params[20]
+    # }
     
     out <- ode(times = c(idstart:idstop), y = ini, func = OneLayer_forecast, parms = params, method = 'rk4')
     
-    if (match(nn, which(!is.na(observed$WT_obs))[2:length(which(!is.na(observed$WT_obs)))]) == 1){
+    if (match(nn, which(!is.na(observed[,2]) | !is.na(observed[,3]))[2:length( which(!is.na(observed[,2]) | !is.na(observed[,3])))]) == 1){
       out_total <- rbind(out_total, out) 
     } else {
       out_total <- rbind(out_total, out[-c(1),]) 
     }
     
-    print(paste0(match(nn, which(!is.na(observed$WT_obs))[2:length(which(!is.na(observed$WT_obs)))]),'/',
-                 length(which(!is.na(observed$WT_obs))[2:length(which(!is.na(observed$WT_obs)))]),
-                 '; WTR NRMSE: ',round(result[id_row1],5)))
-    print(q_par)
-    print(nep_par)
+    print(paste0(match(nn, which(!is.na(observed[,2]) | !is.na(observed[,3]))[2:length( which(!is.na(observed[,2]) | !is.na(observed[,3])))]),'/',
+                 length(which(!is.na(observed[,2]) | !is.na(observed[,3]))[2:length( which(!is.na(observed[,2]) | !is.na(observed[,3])))]),
+                 '; current WTR NRMSE: ',round(result[id_row1,1],5),
+                 '; current DO NRMSE: ',round(result[id_row2,2],5)))
+    # print(q_par)
+    # print(nep_par)
     
     idstart = nn
     ini <- out[nrow(out), 2:3]
+    
+    if (!is.na(observed$WT_obs[idstop])){
     ini[1] <- rnorm(n = 1, mean = observed$WT_obs[idstop], sd = 0.1)
+    }
+    if (!is.na(observed$DO_obs[idstop])){
+    ini[2] <- rnorm(n = 1, mean = observed$DO_obs[idstop] * 1000 *  params[1] / 1e6, sd = 10)
+    # 1000/1e6  * wq_parameters[1]
+    }
   }
   
   if (max(times) > idstart){
     out_forecast <- list()
     for (random_run3 in 1:100){
-      params[7] <- rnorm(n = 1, mean = q_par, sd = 1e8)
+      params[7] <- rnorm(n = 1, mean = q_par, sd = 1e7)
       while(is.na(params[7])){
-        params[7] <- rnorm(n = 1, mean = q_par, sd =  1e8)
+        params[7] <- rnorm(n = 1, mean = q_par, sd =  1e7)
       }
-      params[20] <-  rnorm(n = 1, mean = nep_par, sd =  1e-7)
+      params[20] <-  rnorm(n = 1, mean = nep_par, sd =  1e-5)
       while(is.na(params[20])){
-        params[20] <-  rnorm(n = 1, mean = nep_par, sd = 1e-7)
+        params[20] <-  rnorm(n = 1, mean = nep_par, sd = 1e-5)
       }
       out <- ode(times = c(idstart:max(times)), y = ini, func = OneLayer_forecast, parms = params, method = 'rk4')
       out_df <- rbind(out_total,  out[-c(1),])
@@ -625,7 +634,7 @@ run_temp_oxygen_forecast <- function(bc, params, ini, times, ice = FALSE,
       out_forecast[[match(random_run3, seq(1,100))]] <- out_df
     }
     
-  }
+  } else { out_forecast = out_total}
   
   return(out_forecast)
 }
