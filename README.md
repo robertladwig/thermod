@@ -3,8 +3,6 @@
 
 thermod is a simple two-layer water temperature model that assumes that the lake is divided into two volumes: the epilimnion and the hypolimnion. Both layers are divided by a thermocline zone. The entrainment over the thermocline depends on a diffusion coefficient which is a function of the diffusion at neutral stability to the Richardson number. All equations and derivations are from Steven C. Chapra (2008) 'Surface Water-Quality Modeling' Waveland Press, Inc.
 
-The 'forecasting version' is citeable via [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4921686.svg)](https://doi.org/10.5281/zenodo.4921686).
-
 thermod allows you to
 - simulate water temepratures in the epilimnion and hypolimnion as a function of meteorological forcing data
 - simulate if the lake is stratified or mixed based on modeled water temperatures
