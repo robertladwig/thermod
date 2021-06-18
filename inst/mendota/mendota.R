@@ -26,6 +26,7 @@ parameters <- configure_from_ler(config_file <- config_file, folder = folder)
 # load in the boundary data
 bound <-read_delim(paste0(folder,'/meteo.txt'), delim = '\t')
 
+bound <- bound[, -c(1)]
 colnames(bound) <- c('Day','Jsw','Tair','Dew','vW')
 
 # function to calculate wind shear stress (and transforming wind speed from km/h to m/s)
@@ -171,10 +172,10 @@ result_filter = result
 result_filter$WT_epi = kalman_filtering(time = result_filter$Time, series = result_filter$WT_epi)
 result_filter$WT_hyp = kalman_filtering(time = result_filter$Time, series = result_filter$WT_hyp)
 g1 <- ggplot(result_filter) +
-  geom_line(aes(x=Time, y=WT_epi, col='Surface Mixed Layer (model)')) +
-  geom_line(aes(x=(Time), y=WT_hyp, col='Bottom Layer (model)')) +
-  geom_point(data = obs_sfc, aes(x=time, y=wtr_avg, col='Surface Mixed Layer (obs)'),linetype = "dashed") + # sfc
-  geom_point(data = obs_btm, aes(x=(time), y=wtr_avg, col='Bottom Layer (obs)'), linetype = "dashed") + # btm
+  geom_line(aes(x=as.numeric(Time), y=WT_epi, col='Surface Mixed Layer (model)')) +
+  geom_line(aes(x=as.numeric(Time), y=WT_hyp, col='Bottom Layer (model)')) +
+  geom_point(data = obs_sfc, aes(x=as.numeric(time), y=wtr_avg, col='Surface Mixed Layer (obs)'),linetype = "dashed") + # sfc
+  geom_point(data = obs_btm, aes(x=as.numeric(time), y=wtr_avg, col='Bottom Layer (obs)'), linetype = "dashed") + # btm
   labs(x = 'Simulated Time', y = 'WT in deg C')  +
   scale_color_manual(values = c('blue','blue','red','red')) +
   theme_bw()+
@@ -260,3 +261,172 @@ go2 <- ggplot(result) +
 
 go7 <- grid.arrange(go1, go2, ncol =1);go7
 ggsave(file='2L_visual_mendota_oxygen.png', go7, dpi = 300,width = 200,height = 250, units = 'mm')
+
+
+
+# NPZ tests
+# Fnep, Fsed, Ased, diffred 
+#kg, kra, Cgz, ksa, aca, epsilon, krz ksz, apa, apc, Fsedp, alpha1, alpha2
+test <- c(0.165, 0.15, 1.5*1e3, 1e-5, 0.04 * 1000, 0.6, 0.1 , 1e-5, 15, 0.3, -1500 / 1e4, 1e-15, 1e-15)#rep(1e-10,2))
+npz_parameters <- append(parameters, c(0.001 / 1000, 
+                                       100, 15000 * 1e4, 100,
+                                       test))
+                        
+npz_parameters[19] = parameters[19] # calibration parameter
+# simulation maximum length
+times <- seq(from = 1, to = max(boundary$Day), by = 1)
+# initial water temperatures
+yini <- c(3,3, 10 * 1000/1e6  * wq_parameters[1], 10 * 1000/1e6  * wq_parameters[2],
+          1/1e6  * wq_parameters[1], 1/1e6  * wq_parameters[2],
+          0.05 * 1000/1e6  * wq_parameters[1], 0.05 * 1000/1e6  * wq_parameters[2],
+          20 /1000/(0.001 * 10e6) * wq_parameters[1], 20 /1000/(0.001 * 10e6) * wq_parameters[2]) 
+
+if (file.exists('output.txt')){
+  file.remove('output.txt')
+}
+
+
+ice_on = TRUE # ice "simulation" on or off?
+out <- run_npz_model(bc = boundary, params = npz_parameters, ini = yini, times = times, ice = ice_on)
+
+result <- data.frame('Time' = out[,1],
+                     'WT_epi' = out[,2], 'WT_hyp' = out[,3],
+                     'DO_epi' = out[,4] / 1000 /  wq_parameters[1] * 1e6, 
+                     'DO_hyp' = out[,5] / 1000 /  wq_parameters[1] * 1e6,
+                     'PHY_epi' = out[,6] / 1000 /  wq_parameters[1] * 1e6, 
+                     'PHY_hyp' = out[,7] / 1000 /  wq_parameters[1] * 1e6,
+                     'ZOO_epi' = out[,8] / 1000 /  wq_parameters[1] * 1e6, 
+                     'ZOO_hyp' = out[,9] / 1000 /  wq_parameters[1] * 1e6,
+                     'P_epi' = out[,10] / 1000 /  wq_parameters[1] * 1e6, 
+                     'P_hyp' = out[,11] / 1000 /  wq_parameters[1] * 1e6)
+head(result)
+
+m.result <- reshape2::melt(result, id = 'Time')
+g <- ggplot(m.result) +
+  geom_line(aes(Time, value)) + # / 1000 /  wq_parameters[1] * 1e6
+  facet_wrap(~ variable, scales = 'free') +
+  theme_minimal(); g
+ggsave(file='NPZ.png', g, dpi = 300,width = 250,height = 200, units = 'mm')
+
+time_seq <- seq.Date(from =   as.Date(get_yaml_value(config_file, "time", "start")),
+                     to = as.Date(get_yaml_value(config_file, "time", "stop")),
+                     by = 'day')
+result$Date = time_seq
+
+obs_sfc <- obs %>%
+  filter(Depth_meter <= simple_therm_depth) %>%
+  mutate('date' = yday(datetime),
+         'sfc' = Water_Temperature_celsius) %>%
+  group_by(datetime) %>%
+  summarise('wtr_avg' = mean(sfc, na.rm = TRUE))
+obs_sfc$time = match(as.Date(obs_sfc$datetime), seq(as.Date(start_date), as.Date(stop_date), by = 'day'))
+obs_btm <- obs %>%
+  filter(Depth_meter >= simple_therm_depth) %>%
+  mutate('date' = yday(datetime),
+         'btm' = Water_Temperature_celsius) %>%
+  group_by(datetime) %>%
+  summarise('wtr_avg' = mean(btm, na.rm = TRUE))
+obs_btm$time = match(as.Date(obs_btm$datetime), seq(as.Date(start_date), as.Date(stop_date), by = 'day'))
+
+g1 <- ggplot(result) +
+  geom_line(aes(Date, WT_epi), col = 'red') +
+  labs(x = 'Simulated Time', y = 'WTR in deg C')  +
+  scale_x_date(limits= as.Date(c(min(result$Date), max(result$Date))))+
+  geom_point(data = obs_sfc, aes(x=as.Date(datetime), y=wtr_avg), col = 'orange') +
+  theme_bw()+
+  # guides(col=guide_legend(title="Layer")) +
+  theme(legend.position="bottom");g1
+g2 <- ggplot(result) +
+  geom_line(aes(Date, WT_hyp), col = 'red') +
+  labs(x = 'Simulated Time', y = 'WTR in deg C')  +
+  theme_bw()+
+  geom_point(data = obs_btm, aes(x=as.Date(datetime), y=wtr_avg), col = 'orange') +
+  scale_x_date(limits= as.Date(c(min(result$Date), max(result$Date))))+
+  # guides(col=guide_legend(title="Layer")) +
+  theme(legend.position="bottom");g2
+
+obs_sfc <- obs %>%
+  filter(Depth_meter <= simple_therm_depth) %>%
+  mutate('date' = yday(datetime),
+         'sfc' = Dissolved_Oxygen_gPerCubicMeter ) %>%
+  group_by(datetime) %>%
+  summarise('do_avg' = mean(sfc, na.rm = TRUE))
+obs_sfc$time = match(as.Date(obs_sfc$datetime), seq(as.Date(start_date), as.Date(stop_date), by = 'day'))
+obs_btm <- obs %>%
+  filter(Depth_meter >= simple_therm_depth) %>%
+  mutate('date' = yday(datetime),
+         'btm' = Dissolved_Oxygen_gPerCubicMeter ) %>%
+  group_by(datetime) %>%
+  summarise('do_avg' = mean(btm, na.rm = TRUE))
+obs_btm$time = match(as.Date(obs_btm$datetime), seq(as.Date(start_date), as.Date(stop_date), by = 'day'))
+
+g3 <- ggplot(result) +
+  geom_line(aes(Date, DO_epi), col = 'blue') +
+  labs(x = 'Simulated Time', y = 'DO in g/m3')  +
+  geom_point(data = obs_sfc, aes(x=as.Date(datetime), y=do_avg), col = 'cyan') + # sfc
+  scale_x_date(limits= as.Date(c(min(result$Date), max(result$Date))))+
+  theme_bw()+
+  # guides(col=guide_legend(title="Layer")) +
+  theme(legend.position="bottom");g3
+g4 <- ggplot(result) +
+  geom_line(aes(Date, DO_hyp), col = 'blue') +
+  geom_point(data = obs_btm, aes(x=as.Date(datetime), y=do_avg), col = 'cyan') + # btm
+  scale_x_date(limits= as.Date(c(min(result$Date), max(result$Date))))+
+  labs(x = 'Simulated Time', y = 'DO in g/m3')  +
+  theme_bw()+
+  # guides(col=guide_legend(title="Layer")) +
+  theme(legend.position="bottom");g4
+
+g5 <- ggplot(result) +
+  geom_line(aes(Date, PHY_epi), col = 'darkgreen') +
+  labs(x = 'Simulated Time', y = 'Chla in g/m3')  +
+  scale_x_date(limits= as.Date(c(min(result$Date), max(result$Date))))+
+  theme_bw()+
+  # guides(col=guide_legend(title="Layer")) +
+  theme(legend.position="bottom");g5
+g6 <- ggplot(result) +
+  geom_line(aes(Date, PHY_hyp), col = 'darkgreen') +
+  labs(x = 'Simulated Time', y = 'Chla in g/m3')  +
+  scale_x_date(limits= as.Date(c(min(result$Date), max(result$Date))))+
+  theme_bw()+
+  # guides(col=guide_legend(title="Layer")) +
+  theme(legend.position="bottom");g6
+
+g7 <- ggplot(result) +
+  geom_line(aes(Date, ZOO_epi), col = 'brown') +
+  labs(x = 'Simulated Time', y = 'C in g/m3')  +
+  scale_x_date(limits= as.Date(c(min(result$Date), max(result$Date))))+
+  theme_bw()+
+  # guides(col=guide_legend(title="Layer")) +
+  theme(legend.position="bottom");g7
+g8 <- ggplot(result) +
+  geom_line(aes(Date, ZOO_hyp), col = 'brown') +
+  labs(x = 'Simulated Time', y = 'C in g/m3')  +
+  scale_x_date(limits= as.Date(c(min(result$Date), max(result$Date))))+
+  theme_bw()+
+  # guides(col=guide_legend(title="Layer")) +
+  theme(legend.position="bottom");g8
+
+g9 <- ggplot(result) +
+  geom_line(aes(Date, P_epi), col = 'orange') +
+  labs(x = 'Simulated Time', y = 'P in g/m3')  +
+  scale_x_date(limits= as.Date(c(min(result$Date), max(result$Date))))+
+  theme_bw()+
+  # guides(col=guide_legend(title="Layer")) +
+  theme(legend.position="bottom");g9
+g10 <- ggplot(result) +
+  geom_line(aes(Date, P_hyp), col = 'orange') +
+  labs(x = 'Simulated Time', y = 'P in g/m3')  +
+  scale_x_date(limits= as.Date(c(min(result$Date), max(result$Date))))+
+  theme_bw()+
+  # guides(col=guide_legend(title="Layer")) +
+  theme(legend.position="bottom");g10
+
+g <- (g1 / g3 / g5 / g7 / g9) | (g2 / g4 / g6 / g8 / g10)  ; g
+ggsave(file='2L_visual_mendota_nutrientfoodweb.png', g, dpi = 300,width = 200,height = 250, units = 'mm')
+
+
+
+
+
+
