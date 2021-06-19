@@ -1,5 +1,15 @@
+---
+title: "thermod_LakeMendota"
+author: "Robert Ladwig"
+date: "6/18/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,warning = FALSE, message = FALSE)
+
 rm(list = ls())
-setwd(dirname(rstudioapi::getSourceEditorContext()$path))
+setwd('.')
 
 library(gridExtra)
 library(ggplot2)
@@ -9,23 +19,30 @@ library(RColorBrewer)
 library(zoo)
 library(deSolve)
 library(LakeMetabolizer)
-
 library(dplyr)
 library(readr)
 library(LakeEnsemblR)
 library(gotmtools)
 library(lubridate)
+library(patchwork)
 
 library(thermod)
+```
 
-### GETTING CONFIGURATION INPUT FROM LER YAML FILE
+## thermod-Package
+
+thermod is a simple two-layer heat transport model that assumes that the lake is divided into two completely mixed volumes: the epilimnion and the hypolimnion. Both layers are divided by a thermocline zone. The entrainment over the thermocline depends on a diffusion coefficient which is a function of the diffusion at neutral stability to the Richardson number. All equations and derivations are based on or from Steven C. Chapra (2008) 'Surface Water-Quality Modeling' Waveland Press, Inc.
+
+thermod allows you to easily configure a lake setup from a LakeEnsemblR-configuration file:
+
+```{r configuration}
+# use a LakeEnsemblR setup
 config_file <- 'LakeEnsemblR.yaml'
 folder = '.'
 parameters <- configure_from_ler(config_file <- config_file, folder = folder)
 
-# load in the boundary data
+# load in the meteorological boundary data
 bound <-read_delim(paste0(folder,'/meteo.txt'), delim = '\t')
-
 bound <- bound[, -c(1)]
 colnames(bound) <- c('Day','Jsw','Tair','Dew','vW')
 
@@ -34,113 +51,43 @@ bound$Uw <- 19.0 + 0.95 * (bound$vW * 1000/3600)^2
 bound$vW <- bound$vW * 1000/3600
 
 boundary <- bound
+```
 
+## Temperature simulation
+
+thermod has three main modes: (1) temperature, (2) temperature and dissolved oxygen, and (3) temperature, dissolved oxygen and nutrient-food web model (NPZ). Let us first simulate only water temperatures in both layers for Lake Mendota, and compare this with observed data.
+
+```{r temperature}
 # simulation maximum length
 times <- seq(from = 1, to = max(boundary$Day), by = 1)
+
 # initial water temperatures
 yini <- c(3,3) 
 
+# output is created to store diagnostics of the model run
 if (file.exists('output.txt')){
   file.remove('output.txt')
 }
 
-parameters[19] = 3.2 # calibration parameter
-ice_on = TRUE # ice "simulation" on or off?
+# there is calibration parameter for the vertical diffusivity over the thermocline, which we
+# will set slightly higher to 3.2
+parameters[19] = 3.2 
+
+# you can also set ice_on to TRUE to reduce atmospheric exchanges during idealized ice conditions
+ice_on = TRUE 
+
 out <- run_model(bc = boundary, params = parameters, ini = yini, times = times, ice = ice_on)
 
 result <- data.frame('Time' = out[,1],
                      'WT_epi' = out[,2], 'WT_hyp' = out[,3])
-g1 <- ggplot(result) +
-  geom_line(aes(x=Time, y=WT_epi, col='Surface Mixed Layer')) +
-  geom_line(aes(x=(Time), y=WT_hyp, col='Bottom Layer')) +
-  labs(x = 'Simulated Time', y = 'WT in deg C')  +
-  theme_bw()+
-  guides(col=guide_legend(title="Layer")) +
-  theme(legend.position="bottom");g1
+head(result)
 
-output <- read.table('output.txt')
-
-output <- data.frame('qin'=output[,1],'qout'=output[,2],'mix_e'=output[,3],'mix_h'=output[,4],
-                     'sw'=output[,5],'lw'=output[,6],'water_lw'=output[,7],'conv'=output[,8],
-                     'evap'=output[,9], 'Rh' = output[,10],
-                     'entrain' = output[,11], 'Ri' = output[,12],'time' = output[,13],
-                     'ice' = output[,14])
-
-output$balance <- apply(output[,c(1:9)],1, sum)
-
-g2 <- ggplot(output) +
-  geom_line(aes(x = time,y = qin, col = 'Inflow')) +
-  geom_line(aes(x = time,y = qout, col = 'Outflow')) +
-  geom_line(aes(x = time,y = mix_e, col = 'Mixing into Epilimnion')) +
-  geom_line(aes(x = time,y = mix_h, col = 'Mixing into Hypolimnion')) +
-  geom_line(aes(x = time,y = sw, col = 'Shortwave')) +
-  geom_line(aes(x = time,y = lw, col = 'Longwave')) +
-  geom_line(aes(x = time,y = water_lw, col = 'Reflection')) +
-  geom_line(aes(x = time,y = conv, col = 'Conduction')) +
-  geom_line(aes(x = time,y = evap, col = 'Evaporation')) +
-  geom_line(aes(x = time,y = balance, col = 'Sum'), linetype = "dashed") +
-  scale_colour_brewer("Energy terms", palette="Set3") +
-  labs(x = 'Simulated Time', y = 'Fluxes in cal/(cm2 d)')  +
-  theme_bw()+
-  theme(legend.position="bottom");g2
-
-g3 <- ggplot(output) +
-  geom_line(aes(x = time,y = Ri, col = 'Richardson')) +
-  geom_line(aes(x = time,y = entrain, col = 'Entrainment')) +
-  scale_colour_brewer("Stability terms", palette="Set1") +
-  labs(x = 'Simulated Time', y = 'Entrainment in cm2/s and Ri in [-]')  +
-  theme_bw()+
-  theme(legend.position="bottom");g3
-
-g4 <- ggplot(boundary) +
-  geom_line(aes(x = Day,y = scale(Jsw), col = 'Shortwave')) +
-  geom_line(aes(x = Day,y = scale(Tair), col = 'Airtemp')) +
-  geom_line(aes(x = Day,y = scale(Dew), col = 'Dew temperature')) +
-  geom_line(aes(x = Day,y = scale(vW), col = 'Wind velocity')) +
-  geom_line(aes(x = Day,y = scale(Uw), col = 'Wind shear stress')) +
-  scale_colour_brewer("Boundary Conditions", palette="Set3") +
-  labs(x = 'Simulated Time', y = 'Scaled meteo. boundaries')  +
-  theme_bw()+
-  theme(legend.position="bottom");g4
-
-if (ice_on){
-  ice_df = data.frame('time' = output$time)
-  ice_df$ice = ifelse(output$ice == 1, "off", "on")
-  g5 <- ggplot(ice_df) +
-    geom_point(aes(x = time,y = ice)) +
-    scale_colour_brewer("Boundary Conditions", palette="Set3") +
-    labs(x = 'Simulated Time', y = 'Ice on/off')  +
-    theme_bw()+
-    theme(legend.position="bottom");g5
-  
-  g6 <- grid.arrange(g1, g2, g3, g4, g5, ncol =1);g6
-  ggsave(file='2L_visual_mendota_ice.png', g6, dpi = 300,width = 200,height = 250, units = 'mm')
-} else {
-  g5 <- grid.arrange(g1, g2, g3, g4, ncol =1);g5
-  ggsave(file='2L_visual_mendota.png', g5, dpi = 300,width = 200,height = 220, units = 'mm')
-}
-
-
-
-
+# load observed data
 obs <-read_delim(paste0('obs.txt'), delim = ',')
 simple_therm_depth = parameters[18]
 start_date <- get_yaml_value(config_file, "time", "start")
 stop_date <- get_yaml_value(config_file, "time", "stop")
 
-### EITHER COMPARE AGAINST SPECIFIC DEPTHS
-obs_sfc <- obs %>%
-  filter(Depth_meter == 1) %>%
-  mutate('date' = yday(datetime),
-         'sfc' = Water_Temperature_celsius)
-obs_sfc$time = match(as.Date(obs_sfc$datetime), seq(as.Date(start_date), as.Date(stop_date), by = 'day'))
-obs_btm <- obs %>%
-  filter(Depth_meter == 20) %>%
-  mutate('date' = yday(datetime),
-         'btm' = Water_Temperature_celsius) 
-obs_btm$time = match(as.Date(obs_btm$datetime), seq(as.Date(start_date), as.Date(stop_date), by = 'day'))
-
-### OR COMPARE AGAINST AVERAGE OBSERVED DATA 
 obs_sfc <- obs %>%
   filter(Depth_meter <= simple_therm_depth) %>%
   mutate('date' = yday(datetime),
@@ -156,7 +103,7 @@ obs_btm <- obs %>%
   summarise('wtr_avg' = mean(btm, na.rm = TRUE))
 obs_btm$time = match(as.Date(obs_btm$datetime), seq(as.Date(start_date), as.Date(stop_date), by = 'day'))
 
-g1 <- ggplot(result) +
+ggplot(result) +
   geom_line(aes(x=Time, y=WT_epi, col='Surface Mixed Layer (model)')) +
   geom_line(aes(x=(Time), y=WT_hyp, col='Bottom Layer (model)')) +
   geom_point(data = obs_sfc, aes(x=time, y=wtr_avg, col='Surface Mixed Layer (obs)'),linetype = "dashed") + # sfc
@@ -165,40 +112,30 @@ g1 <- ggplot(result) +
   scale_color_manual(values = c('blue','blue','red','red')) +
   theme_bw()+
   guides(col=guide_legend(title="Layer")) +
-  theme(legend.position="bottom");g1
-ggsave(file='2L_compare_mendota.png', g1, dpi = 300,width = 300,height = 120, units = 'mm')
+  theme(legend.position="bottom")
+```
 
-result_filter = result
-result_filter$WT_epi = kalman_filtering(time = result_filter$Time, series = result_filter$WT_epi)
-result_filter$WT_hyp = kalman_filtering(time = result_filter$Time, series = result_filter$WT_hyp)
-g1 <- ggplot(result_filter) +
-  geom_line(aes(x=as.numeric(Time), y=WT_epi, col='Surface Mixed Layer (model)')) +
-  geom_line(aes(x=as.numeric(Time), y=WT_hyp, col='Bottom Layer (model)')) +
-  geom_point(data = obs_sfc, aes(x=as.numeric(time), y=wtr_avg, col='Surface Mixed Layer (obs)'),linetype = "dashed") + # sfc
-  geom_point(data = obs_btm, aes(x=as.numeric(time), y=wtr_avg, col='Bottom Layer (obs)'), linetype = "dashed") + # btm
-  labs(x = 'Simulated Time', y = 'WT in deg C')  +
-  scale_color_manual(values = c('blue','blue','red','red')) +
-  theme_bw()+
-  guides(col=guide_legend(title="Layer")) +
-  theme(legend.position="bottom");g1
-ggsave(file='2L_compare_mendota_filter.png', g1, dpi = 300,width = 300,height = 120, units = 'mm')
+## Dissolved oxygen simulation
+We can now also add dissolved oxygen equations to the mix, where net ecosystem production is temperature-dependet but also a fitting parameter.
 
-# Oxygen test simulation
-# Fnep, Fsed, Ased, diffred 
+```{r oxygen}
+# we need to configure additional parameters for oxygen dynamics first
 wq_parameters <- append(parameters, c(0.001 / 1000, 
                                        100, 15000 * 1e4, 100))
-wq_parameters[19] = parameters[19] # calibration parameter
+
+wq_parameters[19] = parameters[19]
+
 # simulation maximum length
 times <- seq(from = 1, to = max(boundary$Day), by = 1)
-# initial water temperatures
+
+# initial water temperatures and oxygen conditions
 yini <- c(3,3, 10 * 1000/1e6  * wq_parameters[1], 10 * 1000/1e6  * wq_parameters[2]) 
 
 if (file.exists('output.txt')){
   file.remove('output.txt')
 }
 
-
-ice_on = TRUE # ice "simulation" on or off?
+ice_on = TRUE 
 out <- run_oxygen_model(bc = boundary, params = wq_parameters, ini = yini, times = times, ice = ice_on)
 
 result <- data.frame('Time' = out[,1],
@@ -206,32 +143,12 @@ result <- data.frame('Time' = out[,1],
                      'DO_epi' = out[,4], 'DO_hyp' = out[,5])
 head(result)
 
-go1 <- ggplot(result) +
-  geom_line(aes(x=Time, y=DO_epi / 1000 /  wq_parameters[1] * 1e6, col='Surface Mixed Layer')) +
-  geom_line(aes(x=(Time), y=DO_hyp / 1000 /  wq_parameters[2] * 1e6, col='Bottom Layer')) +
-  labs(x = 'Simulated Time', y = 'DO in g/m3')  +
-  theme_bw()+
-  guides(col=guide_legend(title="Layer")) +
-  theme(legend.position="bottom");go1
-
+# load observed oxygen data
 obs <-read_delim(paste0('obs_oxygen.txt'), delim = ',')
 simple_therm_depth = parameters[18]
 start_date <- get_yaml_value(config_file, "time", "start")
 stop_date <- get_yaml_value(config_file, "time", "stop")
 
-### EITHER COMPARE AGAINST SPECIFIC DEPTHS
-obs_sfc <- obs %>%
-  filter(Depth_meter == 1) %>%
-  mutate('date' = yday(datetime),
-         'sfc' = Dissolved_Oxygen_gPerCubicMeter )
-obs_sfc$time = match(as.Date(obs_sfc$datetime), seq(as.Date(start_date), as.Date(stop_date), by = 'day'))
-obs_btm <- obs %>%
-  filter(Depth_meter == 20) %>%
-  mutate('date' = yday(datetime),
-         'btm' = Dissolved_Oxygen_gPerCubicMeter ) 
-obs_btm$time = match(as.Date(obs_btm$datetime), seq(as.Date(start_date), as.Date(stop_date), by = 'day'))
-
-### OR COMPARE AGAINST AVERAGE OBSERVED DATA 
 obs_sfc <- obs %>%
   filter(Depth_meter <= simple_therm_depth) %>%
   mutate('date' = yday(datetime),
@@ -247,35 +164,41 @@ obs_btm <- obs %>%
   summarise('do_avg' = mean(btm, na.rm = TRUE))
 obs_btm$time = match(as.Date(obs_btm$datetime), seq(as.Date(start_date), as.Date(stop_date), by = 'day'))
 
-go2 <- ggplot(result) +
+ggplot(result) +
   geom_line(aes(x=Time, y=DO_epi / 1000 /  wq_parameters[1] * 1e6, col='Surface Mixed Layer (model)')) +
   geom_line(aes(x=(Time), y=DO_hyp / 1000 /  wq_parameters[2] * 1e6, col='Bottom Layer (model)')) +
-  geom_point(data = obs_sfc, aes(x=time, y=do_avg, col='Surface Mixed Layer (obs)'),linetype = "dashed") + # sfc
-  geom_point(data = obs_btm, aes(x=(time), y=do_avg, col='Bottom Layer (obs)'),linetype = "dashed") + # btm
+  geom_point(data = obs_sfc, aes(x=time, y=do_avg, col='Surface Mixed Layer (obs)'),linetype = "dashed") +
+  geom_point(data = obs_btm, aes(x=(time), y=do_avg, col='Bottom Layer (obs)'),linetype = "dashed") + 
   labs(x = 'Simulated Time', y = 'DO in g/m3')  +
   scale_color_manual(values = c('blue','blue','red','red')) +
   theme_bw()+
   guides(col=guide_legend(title="Layer")) +
-  theme(legend.position="bottom");go2
-# ggsave(file='../../images/oxygen.png', go2, dpi = 300,width = 300,height = 120, units = 'mm')
+  theme(legend.position="bottom")
+```
 
-go7 <- grid.arrange(go1, go2, ncol =1);go7
-ggsave(file='2L_visual_mendota_oxygen.png', go7, dpi = 300,width = 200,height = 250, units = 'mm')
+## NPZ (nutrient-phytoplankton-zooplankton) simulation
+We can also simulate a simplified NPZ model using thermod, where we solve 5 ordinary differential equations per layer (so, 10 in total). All these ODEs are coupled to each other, e.g. 
+- all equations are temperature-dependent
+- phytoplankton are grazed by zooplankton
+- zooplankton die and get converted to nutrients (i.e., phosphorus)
+- nutrients get converted into phytoplankton, and vice versa
+- net ecosystem production of oxygen depends on phytoplankton
+- sediment flux of nutrients depend on dissolved oxygen
+These additional layers of complexity result in a vast increase of additional fitting parameters, as well as amore profound effect of the initial conditions on the model run.
 
+```{r npz}
+npz_specific <- c(0.165, 0.15, 1.5*1e3, 1e-5, 0.04 * 1000, 0.6, 0.1 , 1e-5, 15, 0.3, -1500 / 1e4, 1e-15, 1e-15)
 
-
-# NPZ tests
-# Fnep, Fsed, Ased, diffred 
-#kg, kra, Cgz, ksa, aca, epsilon, krz ksz, apa, apc, Fsedp, alpha1, alpha2
-test <- c(0.165, 0.15, 1.5*1e3, 1e-5, 0.04 * 1000, 0.6, 0.1 , 1e-5, 15, 0.3, -1500 / 1e4, 1e-15, 1e-15)#rep(1e-10,2))
 npz_parameters <- append(parameters, c(0.001 / 1000, 
                                        100, 15000 * 1e4, 100,
-                                       test))
+                                       npz_specific))
                         
-npz_parameters[19] = parameters[19] # calibration parameter
+npz_parameters[19] = parameters[19]
+
 # simulation maximum length
 times <- seq(from = 1, to = max(boundary$Day), by = 1)
-# initial water temperatures
+
+# initial water temperatures, oxygen, phytoplankton, zooplankton and nutrient conditions
 yini <- c(3,3, 10 * 1000/1e6  * wq_parameters[1], 10 * 1000/1e6  * wq_parameters[2],
           1/1e6  * wq_parameters[1], 1/1e6  * wq_parameters[2],
           0.05 * 1000/1e6  * wq_parameters[1], 0.05 * 1000/1e6  * wq_parameters[2],
@@ -285,8 +208,8 @@ if (file.exists('output.txt')){
   file.remove('output.txt')
 }
 
+ice_on = TRUE 
 
-ice_on = TRUE # ice "simulation" on or off?
 out <- run_npz_model(bc = boundary, params = npz_parameters, ini = yini, times = times, ice = ice_on)
 
 result <- data.frame('Time' = out[,1],
@@ -301,12 +224,6 @@ result <- data.frame('Time' = out[,1],
                      'P_hyp' = out[,11] / 1000 /  wq_parameters[1] * 1e6)
 head(result)
 
-m.result <- reshape2::melt(result, id = 'Time')
-g <- ggplot(m.result) +
-  geom_line(aes(Time, value)) + # / 1000 /  wq_parameters[1] * 1e6
-  facet_wrap(~ variable, scales = 'free') +
-  theme_minimal(); g
-ggsave(file='NPZ.png', g, dpi = 300,width = 250,height = 200, units = 'mm')
 
 time_seq <- seq.Date(from =   as.Date(get_yaml_value(config_file, "time", "start")),
                      to = as.Date(get_yaml_value(config_file, "time", "stop")),
@@ -334,16 +251,14 @@ g1 <- ggplot(result) +
   scale_x_date(limits= as.Date(c(min(result$Date), max(result$Date))))+
   geom_point(data = obs_sfc, aes(x=as.Date(datetime), y=wtr_avg), col = 'orange') +
   theme_bw()+
-  # guides(col=guide_legend(title="Layer")) +
-  theme(legend.position="bottom");g1
+  theme(legend.position="bottom")
 g2 <- ggplot(result) +
   geom_line(aes(Date, WT_hyp), col = 'red') +
   labs(x = 'Simulated Time', y = 'WTR in deg C')  +
   theme_bw()+
   geom_point(data = obs_btm, aes(x=as.Date(datetime), y=wtr_avg), col = 'orange') +
   scale_x_date(limits= as.Date(c(min(result$Date), max(result$Date))))+
-  # guides(col=guide_legend(title="Layer")) +
-  theme(legend.position="bottom");g2
+  theme(legend.position="bottom")
 
 obs_sfc <- obs %>%
   filter(Depth_meter <= simple_therm_depth) %>%
@@ -366,73 +281,61 @@ g3 <- ggplot(result) +
   geom_point(data = obs_sfc, aes(x=as.Date(datetime), y=do_avg), col = 'cyan') + # sfc
   scale_x_date(limits= as.Date(c(min(result$Date), max(result$Date))))+
   theme_bw()+
-  # guides(col=guide_legend(title="Layer")) +
-  theme(legend.position="bottom");g3
+  theme(legend.position="bottom")
 g4 <- ggplot(result) +
   geom_line(aes(Date, DO_hyp), col = 'blue') +
   geom_point(data = obs_btm, aes(x=as.Date(datetime), y=do_avg), col = 'cyan') + # btm
   scale_x_date(limits= as.Date(c(min(result$Date), max(result$Date))))+
   labs(x = 'Simulated Time', y = 'DO in g/m3')  +
   theme_bw()+
-  # guides(col=guide_legend(title="Layer")) +
-  theme(legend.position="bottom");g4
+  theme(legend.position="bottom")
 
 g5 <- ggplot(result) +
   geom_line(aes(Date, PHY_epi), col = 'darkgreen') +
   labs(x = 'Simulated Time', y = 'Chla in g/m3')  +
   scale_x_date(limits= as.Date(c(min(result$Date), max(result$Date))))+
   theme_bw()+
-  # guides(col=guide_legend(title="Layer")) +
-  theme(legend.position="bottom");g5
+  theme(legend.position="bottom")
 g6 <- ggplot(result) +
   geom_line(aes(Date, PHY_hyp), col = 'darkgreen') +
   labs(x = 'Simulated Time', y = 'Chla in g/m3')  +
   scale_x_date(limits= as.Date(c(min(result$Date), max(result$Date))))+
   theme_bw()+
-  # guides(col=guide_legend(title="Layer")) +
-  theme(legend.position="bottom");g6
+  theme(legend.position="bottom")
 
 g7 <- ggplot(result) +
   geom_line(aes(Date, ZOO_epi), col = 'brown') +
   labs(x = 'Simulated Time', y = 'C in g/m3')  +
   scale_x_date(limits= as.Date(c(min(result$Date), max(result$Date))))+
   theme_bw()+
-  # guides(col=guide_legend(title="Layer")) +
-  theme(legend.position="bottom");g7
+  theme(legend.position="bottom")
 g8 <- ggplot(result) +
   geom_line(aes(Date, ZOO_hyp), col = 'brown') +
   labs(x = 'Simulated Time', y = 'C in g/m3')  +
   scale_x_date(limits= as.Date(c(min(result$Date), max(result$Date))))+
   theme_bw()+
-  # guides(col=guide_legend(title="Layer")) +
-  theme(legend.position="bottom");g8
+  theme(legend.position="bottom")
 
 g9 <- ggplot(result) +
   geom_line(aes(Date, P_epi), col = 'orange') +
   labs(x = 'Simulated Time', y = 'P in g/m3')  +
   scale_x_date(limits= as.Date(c(min(result$Date), max(result$Date))))+
   theme_bw()+
-  # guides(col=guide_legend(title="Layer")) +
-  theme(legend.position="bottom");g9
+  theme(legend.position="bottom")
 g10 <- ggplot(result) +
   geom_line(aes(Date, P_hyp), col = 'orange') +
   labs(x = 'Simulated Time', y = 'P in g/m3')  +
   scale_x_date(limits= as.Date(c(min(result$Date), max(result$Date))))+
   theme_bw()+
-  # guides(col=guide_legend(title="Layer")) +
-  theme(legend.position="bottom");g10
+  theme(legend.position="bottom")
 
-library(patchwork)
-g <- (g1 / g3 / g5 / g7 / g9) | (g2 / g4 / g6 / g8 / g10)  +
+(g1 / g3 / g5 / g7 / g9) | (g2 / g4 / g6 / g8 / g10)  +
   plot_annotation(
     title = 'Thermod, 2-layer NPZ model, v1.01',
     subtitle = 'Epilimnion (left), Hypolimnion (right)',
     caption = 'Under development'
-  ); g
-ggsave(file='2L_visual_mendota_nutrientfoodweb.png', g, dpi = 300,width = 200,height = 250, units = 'mm')
+  )
 
-
-
-
+```
 
 
