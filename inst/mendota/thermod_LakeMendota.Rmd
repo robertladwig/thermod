@@ -186,7 +186,7 @@ We can also simulate a simplified NPZ model using thermod, where we solve 5 ordi
 - sediment flux of nutrients depend on dissolved oxygen
 These additional layers of complexity result in a vast increase of additional fitting parameters, as well as amore profound effect of the initial conditions on the model run.
 
-```{r npz}
+```{r npz,  fig.width = 8, fig.height= 12}
 npz_specific <- c(0.165, 0.15, 1.5*1e3, 1e-5, 0.04 * 1000, 0.6, 0.1 , 1e-5, 15, 0.3, -1500 / 1e4, 1e-15, 1e-15)
 
 npz_parameters <- append(parameters, c(0.001 / 1000, 
@@ -336,6 +336,18 @@ g10 <- ggplot(result) +
     caption = 'Under development'
   )
 
+ggplot(result) +
+  geom_line(aes(Date, scale(WT_epi), col = 'WTR')) +
+  labs(x = 'Simulated Time', y = 'Scaled')  +
+  geom_line(aes(Date, scale(DO_epi), col = 'DO')) +
+  geom_line(aes(Date, scale(PHY_epi), col = 'PHY')) +
+  geom_line(aes(Date, scale(ZOO_epi), col = 'ZOO')) +
+  geom_line(aes(Date, scale(P_epi), col = 'P')) +
+  ylim(-2.2, 2.2)+
+  scale_x_date(limits= as.Date(c('2000-01-01', '2003-12-31')))+
+  theme_bw()+
+  guides(col=guide_legend(title="Variable")) +
+  theme(legend.position="bottom")
 ```
 
 
