@@ -335,19 +335,21 @@ g10 <- ggplot(result) +
     subtitle = 'Epilimnion (left), Hypolimnion (right)',
     caption = 'Under development'
   )
+```
 
+We can inspect seasonal dynamics more closely by scaling the modeled variables. Surface water temperature peak in summer, whereas dissolved oxygen goes down over the course of the summer season. Oxygen seems to peak twice: once during fall mixing when oxygen gets replenished through the water column, and once during the peak of phytoplankton in spring. Meanwhile, nutrients (phosphate) peak first (then decline), followed by a peak of phytoplankton and, afterwards, a peak of zooplankton.
+
+```{r season}
 ggplot(result) +
-  geom_line(aes(Date, scale(WT_epi), col = 'WTR')) +
+  geom_line(aes(Date, scale(WT_epi), col = 'WTR'), col = 'red') +
   labs(x = 'Simulated Time', y = 'Scaled')  +
-  geom_line(aes(Date, scale(DO_epi), col = 'DO')) +
-  geom_line(aes(Date, scale(PHY_epi), col = 'PHY')) +
-  geom_line(aes(Date, scale(ZOO_epi), col = 'ZOO')) +
-  geom_line(aes(Date, scale(P_epi), col = 'P')) +
+  geom_line(aes(Date, scale(DO_epi), col = 'DO'), col ='blue') +
+  geom_line(aes(Date, scale(PHY_epi), col = 'PHY'), col = 'darkgreen') +
+  geom_line(aes(Date, scale(ZOO_epi), col = 'ZOO'), col = 'brown') +
+  geom_line(aes(Date, scale(P_epi), col = 'P'), col = 'orange') +
   ylim(-2.2, 2.2)+
   scale_x_date(limits= as.Date(c('2000-01-01', '2003-12-31')))+
   theme_bw()+
   guides(col=guide_legend(title="Variable")) +
   theme(legend.position="bottom")
 ```
-
-
