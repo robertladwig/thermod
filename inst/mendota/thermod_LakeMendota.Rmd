@@ -1,8 +1,10 @@
 ---
-title: "thermod_LakeMendota"
+title: 'Example of thermod application: Lake Mendota'
 author: "Robert Ladwig"
 date: "6/18/2021"
-output: html_document
+output:
+  html_document: default
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -53,9 +55,32 @@ bound$vW <- bound$vW * 1000/3600
 boundary <- bound
 ```
 
+thermod then solves its ordnary differential equations on a vertical grid with two elements and on a daily time step using the 4th-order Runge-Kutta method: 
+$c_{i+1}= c_i + [\frac{1}{6}(k_1+2k_2+k_3+k_4)]h$. Further, the depth of the thermocline is fixed and either provided by the user or estimated based on maximum length or width of the basin using the empirical eqation from Hanna M. (1990) Evaluation of Models predicting Mixing depth. Can. J. Fish. Aquat. Sci. 47: 940-947: $z_{therm} = 10^{0.336 log10(max(L,W))-0.245}$.
+
 ## Temperature simulation
 
 thermod has three main modes: (1) temperature, (2) temperature and dissolved oxygen, and (3) temperature, dissolved oxygen and nutrient-food web model (NPZ). Let us first simulate only water temperatures in both layers for Lake Mendota, and compare this with observed data.
+
+Here, thermod solves two ordinary differential equations for water temperature:
+$\frac{dT_{epi}}{dt} = \frac{Q}{V_{epi}}T_{in} - \frac{Q}{V_{epi}}T_{epi} + {\upsilon }_t \frac{A_t}{V_{epi}}(T_{hypo} - T_{epi}) \pm \frac{A_{surf}}{V_{epi} \rho c_p} J$ and 
+$\frac{dT_{hypo}}{dt} = {\upsilon}_t \frac{A_t}{V_{hypo}} (T_{epi} - T_{hypo})$
+
+The atmospheric heat fluxes, $J$, are separated into the five sub-heat fluxes shortwave radiation, incominglongwave radiation, outgoing longwace radiation, latent heat flux and sensible heat flux: $J = J_{sw} + J_{in} * J_{out} + J_{E} + J_{H}$.
+Here, $J_{sw}$ is a measured bondary condition, whereas the other heat terms are estimated from meteorological data:
+$J_{in} = \sigma (T_{air} + 273)^4 (K+0.031 \sqrt{e_{air}})(1-R_L)$,
+$J_{out}=\epsilon \sigma (T_{epi} +273)^4$,
+$J_E = f(Uw)(e_{sat}-e_{air})$ with $f(Uw)= 19.0 + 0.95 {u_{wind}}^2$,
+and
+$J_H = c_1 f(Uw)(T_{epi} - T_{air})$.
+
+thermod aims to get a dynamic representation of the vertical diffusivity in dependence of the water column stability (in contrast to telling the model to use high or low values on specific days). Therefore, the model states the diffusion coefficient as being dependent on the diffusion at neutral stability to the Richardson number:
+${\upsilon}_t = \frac{E_0}{(1+\alpha {R_i})^{3/2}}$. 
+The diffusion coefficient at neutral stability then depends on the ratio of wind shear stress to water density:
+$E_0 = c \sqrt{\frac{\tau}{\rho_{water}}}$ with wind shear stress as:
+${\tau} = {\rho}_{air} C_d {u_{wind}}^2$.
+Finally, we can estimate the Richardson number, which generally describes the work of buoyancy against wind-induced turbulence. If it is below 1/4, the system will experience shear-induced turbulence:
+$Ri = \frac{-\frac{g}{\rho}\frac{d\rho}{dz}}{\sqrt{\frac{\tau}{\rho_{water}}}H^{-2}}$ which acts over a thickness $H$ which we assume to be the thermocline depth.
 
 ```{r temperature}
 # simulation maximum length
@@ -63,11 +88,6 @@ times <- seq(from = 1, to = max(boundary$Day), by = 1)
 
 # initial water temperatures
 yini <- c(3,3) 
-
-# output is created to store diagnostics of the model run
-if (file.exists('output.txt')){
-  file.remove('output.txt')
-}
 
 # there is calibration parameter for the vertical diffusivity over the thermocline, which we
 # will set slightly higher to 3.2
@@ -116,7 +136,8 @@ ggplot(result) +
 ```
 
 ## Dissolved oxygen simulation
-We can now also add dissolved oxygen equations to the mix, where net ecosystem production is temperature-dependet but also a fitting parameter.
+We can now also add dissolved oxygen equations to the mix, where net ecosystem production and sediment oxygen demand are temperature-dependet but also fitting parameters (here using $P_{NEP}$ and $P_{SED}$):
+$\frac{dDO_{epi}}{dt}= F_{NEP} + F_{ATM} + {\upsilon}_{t,DO}*A_T *(\frac{DO_{hypo}}{V_{hypo}}-\frac{DO_{epi}}{V_{epi}})$ with $F_{ATM} = k(DO_{sat}-\frac{DO_{epi}}{V_{epi}})* A_{surf}$ (gas exchange after the method according to Cole (1998)), and $F_{NEP}= \theta^{T_{epi}-20} * P_{NEP} *V_{epi}$; and $\frac{dDO_{hypo}}{dt}= {\upsilon}_{t,DO}*A_T *(\frac{DO_{epi}}{V_{epi}}-\frac{DO_{hypo}}{V_{hypo}})$ with $F_{SED}= P_{SED} * A_{SED}* \theta^{T_{hypo}-20}(\frac{\frac{DO_{hypo}}{V_{hypo}}}{k_{1/2}+\frac{DO_{hypo}}{V_{hypo}}})$. The parameter ${\upsilon}_{t,DO}$ depends on the estimated vertical diffusivity but is set several magnitudes lower. Note that thermod itself tracks the mass of dissolved oxygen per layer.
 
 ```{r oxygen}
 # we need to configure additional parameters for oxygen dynamics first
@@ -130,10 +151,6 @@ times <- seq(from = 1, to = max(boundary$Day), by = 1)
 
 # initial water temperatures and oxygen conditions
 yini <- c(3,3, 10 * 1000/1e6  * wq_parameters[1], 10 * 1000/1e6  * wq_parameters[2]) 
-
-if (file.exists('output.txt')){
-  file.remove('output.txt')
-}
 
 ice_on = TRUE 
 out <- run_oxygen_model(bc = boundary, params = wq_parameters, ini = yini, times = times, ice = ice_on)
@@ -184,16 +201,29 @@ We can also simulate a simplified NPZ model using thermod, where we solve 5 ordi
 - nutrients get converted into phytoplankton, and vice versa
 - net ecosystem production of oxygen depends on phytoplankton
 - sediment flux of nutrients depend on dissolved oxygen
-These additional layers of complexity result in a vast increase of additional fitting parameters, as well as amore profound effect of the initial conditions on the model run.
 
-```{r npz,  fig.width = 8, fig.height= 12}
-npz_specific <- c(0.165, 0.15, 1.5*1e3, 1e-5, 0.04 * 1000, 0.6, 0.1 , 1e-5, 15, 0.3, -1500 / 1e4, 1e-15, 1e-15)
+All equations depend on $a$-parameters that transform mass from one state to the other, e.g. chlorophyll-a, carbon or phosphorus. Further, we state that phytoplankton and zooplankton are sinking down towards the sediment, whereas phosphorus can also be transported between the two layers via turbulent diffusion. First, we state the ODEs for phytoplankton as the mass of chlorophyll-a:
+$\frac{dPHY_{epi}}{dt}= [(k_g \frac{P_{epi}}{k_{1/2} + P_{epi}}-k_{ra})* PHY_{epi}- C_{gz}*ZOO_{epi}*PHY_{epi}]\theta^{T_{epi}-20}-k_{sa}*PHY_{epi}$ and $\frac{dPHY_{hypo}}{dt}= [(k_g \frac{P_{hypo}}{k_{1/2} + P_{hypo}}-k_{ra})* PHY_{hypo}- C_{gz}*ZOO_{hypo}*PHY_{hypo}]\theta^{T_{hypo}-20}+k_{sa}*PHY_{epi} -k_{sa}*PHY_{hypo}$. Here, phytoplankton depends on a growth and respiration difference, grazing by zooplankton, and a sinking term.
+Then we can write the changes of zooplankton as changes of carbon (C) mass:
+$\frac{dZOO_{epi}}{dt}=[(a_{ca}*\epsilon*C_{gz})*ZOO_{epi}*PHY_{epi})-k_{rz}*PHY_{epi}]\theta^{T_{epi}-20}-k_{sz}*ZOO_{epi}$ and $\frac{dZOO_{hypo}}{dt}=[(a_{ca}*\epsilon*C_{gz})*ZOO_{hypo}*PHY_{hypo})-k_{rz}*PHY_{hypo}]\theta^{T_{hypo}-20}+k_{sz}*ZOO_{epi}-k_{sz}*ZOO_{hypo}$. Here, zooplankton depends on grazing of phytoplankton, a respiration to phosphorus, and a sinking term.
+Finaly, the mass of phosphorus changes using:
+$\frac{dP_{epi}}{dt}=[a_{pa}(1-\epsilon)*C_{gz}*ZOO_{epi}*PHY_{epi}+a_{pc}*k_{rz}*ZOO_{epi}-a_{pa}(k_g\frac{P_{epi}}{k_{1/2} + P_{epi}}-k_{ra})PHY_{epi}]\theta^{T_{epi}-20}+{\upsilon}_{t,DO}*A_t*(\frac{P_{hypo}}{V_{hypo}}-\frac{P_{epi}}{V_{epi}})$ and $\frac{dP_{hypo}}{dt}=[a_{pa}(1-\epsilon)*C_{gz}*ZOO_{hypo}*PHY_{hypo}+a_{pc}*k_{rz}*ZOO_{epi}-a_{pa}(k_g\frac{P_{hypo}}{k_{1/2} + P_{hypo}}-k_{ra})PHY_{hypo}]\theta^{T_{hypo}-20}+{\upsilon}_{t,DO}*A_t*(\frac{P_{epi}}{V_{epi}}-\frac{P_{hypo}}{V_{hypo}})- P_{SED,P}*A_{SED}\theta^{T_{hypo}-20}*(\frac{\frac{DO_{hypo}}{V_{hypo}}}{k_{1/2}+\frac{DO_{hypo}}{V_{hypo}}})$. Here, phosphorus is gained from grazing of zooplankton on phytoplankton, from the respiration of zooplankton as well as phytoplankton, from turbulent diffusion, and (in the hypolimnion) from a sediment flux.
+Finally, we can couple the dynamics of phytoplankton to dissolved oxygen now by removing the fitting parameter $P_{NEP}$ and quantifying it as:
+$F_{NEP} = \theta^{T_{epi}-20}(\alpha_1*k_g\frac{P_{epi}}{k_{1/2} + P_{epi}}-\alpha_2 * k_{ra})PHY_{epi}$.
+
+These additional layers of complexity result in a vast increase of additional fitting parameters, as well as a more profound effect of the initial conditions on the model run.
+
+```{r npz,  fig.width = 10, fig.height= 12}
+npz_specific <- c(0.5, 0.015, 1.5*1e3, 2e-1, 0.04 * 1000, 0.5, 0.1 , 2e-1, 1e-2, 5e-4,  -1500 / 1e4, 3e1, 3e1)
 
 npz_parameters <- append(parameters, c(0.001 / 1000, 
-                                       100, 15000 * 1e4, 100,
-                                       npz_specific))
+                                       100, 25000 * 1e4, 100,
+                                       npz_specific))# c(0.001 / 1000, 
+# 100, 15000 * 1e4, 100,
+# test))
                         
-npz_parameters[19] = parameters[19]
+npz_parameters[19] = parameters[19] # calibration parameter
+npz_parameters[23] = npz_parameters[23] / 5# calibration parameter
 
 # simulation maximum length
 times <- seq(from = 1, to = max(boundary$Day), by = 1)
@@ -203,10 +233,6 @@ yini <- c(3,3, 10 * 1000/1e6  * wq_parameters[1], 10 * 1000/1e6  * wq_parameters
           1/1e6  * wq_parameters[1], 1/1e6  * wq_parameters[2],
           0.05 * 1000/1e6  * wq_parameters[1], 0.05 * 1000/1e6  * wq_parameters[2],
           20 /1000/(0.001 * 10e6) * wq_parameters[1], 20 /1000/(0.001 * 10e6) * wq_parameters[2]) 
-
-if (file.exists('output.txt')){
-  file.remove('output.txt')
-}
 
 ice_on = TRUE 
 
@@ -290,9 +316,24 @@ g4 <- ggplot(result) +
   theme_bw()+
   theme(legend.position="bottom")
 
+obs_chla <- read.csv('obs_chla.csv')
+obs_chla2 = obs_chla %>%
+  filter(depth_range_m %in% c('0', '4', '8')) %>%
+  group_by(sampledate) %>%
+  summarise(mean(correct_chl_fluor)) %>%
+  rename(correct_chl_fluor = `mean(correct_chl_fluor)`)
+obs_chla1 = obs_chla %>%
+  filter(depth_range_m %in% c('0-8')) %>%
+  select(sampledate, correct_chl_fluor)
+obs_chla_cleaned = merge(obs_chla2, obs_chla1, by = 'sampledate')
+
+obs_sfc <- obs_chla1
+obs_sfc$time = match(as.Date(obs_chla1$sampledate), seq(as.Date(start_date), as.Date(stop_date), by = 'day'))
+
 g5 <- ggplot(result) +
   geom_line(aes(Date, PHY_epi), col = 'darkgreen') +
   labs(x = 'Simulated Time', y = 'Chla in g/m3')  +
+  geom_point(data = obs_sfc, aes(x=as.Date(sampledate), y=correct_chl_fluor/1000), col = 'lightgreen') +
   scale_x_date(limits= as.Date(c(min(result$Date), max(result$Date))))+
   theme_bw()+
   theme(legend.position="bottom")
@@ -316,14 +357,34 @@ g8 <- ggplot(result) +
   theme_bw()+
   theme(legend.position="bottom")
 
+obs_nutrient <- read.csv('obs_nutrient.csv')
+obs_nutrient$datetime <- as.POSIXct(obs_nutrient$datetime)
+
+obs_sfc <- obs_nutrient %>%
+  filter(depth <= simple_therm_depth) %>%
+  mutate('date' = yday(datetime),
+         'sfc' = PHS_frp ) %>%
+  group_by(datetime) %>%
+  summarise('p_avg' = mean(sfc, na.rm = TRUE))
+obs_sfc$time = match(as.Date(obs_sfc$datetime), seq(as.Date(start_date), as.Date(stop_date), by = 'day'))
+obs_btm <- obs_nutrient %>%
+  filter(depth >= simple_therm_depth) %>%
+  mutate('date' = yday(datetime),
+         'btm' = PHS_frp ) %>%
+  group_by(datetime) %>%
+  summarise('p_avg' = mean(btm, na.rm = TRUE))
+obs_btm$time = match(as.Date(obs_btm$datetime), seq(as.Date(start_date), as.Date(stop_date), by = 'day'))
+
 g9 <- ggplot(result) +
   geom_line(aes(Date, P_epi), col = 'orange') +
+  geom_point(data = obs_sfc, aes(x=as.Date(datetime), y=p_avg), col = 'yellow') +
   labs(x = 'Simulated Time', y = 'P in g/m3')  +
   scale_x_date(limits= as.Date(c(min(result$Date), max(result$Date))))+
   theme_bw()+
   theme(legend.position="bottom")
 g10 <- ggplot(result) +
   geom_line(aes(Date, P_hyp), col = 'orange') +
+  geom_point(data = obs_btm, aes(x=as.Date(datetime), y=p_avg), col = 'yellow') +
   labs(x = 'Simulated Time', y = 'P in g/m3')  +
   scale_x_date(limits= as.Date(c(min(result$Date), max(result$Date))))+
   theme_bw()+
@@ -341,15 +402,21 @@ We can inspect seasonal dynamics more closely by scaling the modeled variables. 
 
 ```{r season}
 ggplot(result) +
-  geom_line(aes(Date, scale(WT_epi), col = 'WTR'), col = 'red') +
+  geom_line(aes(Date, scale(WT_epi), col = 'WTR')) +
   labs(x = 'Simulated Time', y = 'Scaled')  +
-  geom_line(aes(Date, scale(DO_epi), col = 'DO'), col ='blue') +
-  geom_line(aes(Date, scale(PHY_epi), col = 'PHY'), col = 'darkgreen') +
-  geom_line(aes(Date, scale(ZOO_epi), col = 'ZOO'), col = 'brown') +
-  geom_line(aes(Date, scale(P_epi), col = 'P'), col = 'orange') +
+  geom_line(aes(Date, scale(DO_epi), col = 'DO')) +
+  geom_line(aes(Date, scale(PHY_epi), col = 'PHY')) +
+  geom_line(aes(Date, scale(ZOO_epi), col = 'ZOO')) +
+  geom_line(aes(Date, scale(P_epi), col = 'P')) +
+  scale_color_manual(values=c("blue", "orange", "darkgreen",'red', 'brown')) +
   ylim(-2.2, 2.2)+
   scale_x_date(limits= as.Date(c('2000-01-01', '2003-12-31')))+
-  theme_bw()+
-  guides(col=guide_legend(title="Variable")) +
-  theme(legend.position="bottom")
+  guides(col=guide_legend(title="")) +
+  theme_bw() +
+  theme(
+    legend.position = c(.95, .05),
+    legend.justification = c("right", "bottom"),
+    legend.box.just = "right",
+    legend.margin = margin(6, 6, 6, 6)
+  ) 
 ```

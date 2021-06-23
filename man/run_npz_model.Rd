@@ -4,7 +4,7 @@
 \alias{run_npz_model}
 \title{Simple two-layer water temperature, oxygen, phytoplankton, zooplankton and nutrient model}
 \usage{
-run_npz_model(bc, params, ini, times, ice = FALSE)
+run_npz_model(bc, params, ini, times, ice = FALSE, new.diagn = TRUE)
 }
 \arguments{
 \item{bc}{meteorological boundary conditions: day, shortwave radiation, air temperature, dew

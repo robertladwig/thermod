@@ -155,7 +155,7 @@ configure_from_ler = function(config_file = 'LakeEnsemblR.yaml', folder = '.', m
 #' @export
 #' @import deSolve 
 #' @import LakeMetabolizer
-run_model <- function(bc, params, ini, times, ice = FALSE){
+run_model <- function(bc, params, ini, times, ice = FALSE, new.diagn = TRUE){
   Ve <- params[1] # epilimnion volume (cm3)
   Vh <- params[2] # hypolimnion volume (cm3)
   At <- params[3] # thermocline area (cm2)
@@ -253,6 +253,11 @@ run_model <- function(bc, params, ini, times, ice = FALSE){
   Uw <- approxfun(x = bc$Day, y = bc$Uw, method = "linear", rule = 2)
   vW <- approxfun(x = bc$Day, y = bc$vW, method = "linear", rule = 2)
   
+  if (new.diagn == TRUE){
+    if (file.exists('output.txt')){
+      file.remove('output.txt')
+    }
+  }
   # runge-kutta 4th order
   out <- ode(times = times, y = ini, func = TwoLayer, parms = params, method = 'rk4')
   
@@ -276,7 +281,7 @@ run_model <- function(bc, params, ini, times, ice = FALSE){
 #' @export
 #' @import deSolve 
 #' @import LakeMetabolizer
-run_oxygen_model <- function(bc, params, ini, times, ice = FALSE){
+run_oxygen_model <- function(bc, params, ini, times, ice = FALSE, new.diagn = TRUE){
   Ve <- params[1] # epilimnion volume (cm3)
   Vh <- params[2] # hypolimnion volume (cm3)
   At <- params[3] # thermocline area (cm2)
@@ -407,6 +412,11 @@ run_oxygen_model <- function(bc, params, ini, times, ice = FALSE){
   Uw <- approxfun(x = bc$Day, y = bc$Uw, method = "linear", rule = 2)
   vW <- approxfun(x = bc$Day, y = bc$vW, method = "linear", rule = 2)
   
+  if (new.diagn == TRUE){
+    if (file.exists('output.txt')){
+      file.remove('output.txt')
+    }
+  }
   # runge-kutta 4th order
   out <- ode(times = times, y = ini, func = TwoLayer_oxy, parms = params, method = 'rk4')
   
@@ -429,7 +439,7 @@ run_oxygen_model <- function(bc, params, ini, times, ice = FALSE){
 #' @export
 #' @import deSolve 
 #' @import LakeMetabolizer
-run_npz_model <- function(bc, params, ini, times, ice = FALSE){
+run_npz_model <- function(bc, params, ini, times, ice = FALSE, new.diagn = TRUE){
   Ve <- params[1] # epilimnion volume (cm3)
   Vh <- params[2] # hypolimnion volume (cm3)
   At <- params[3] # thermocline area (cm2)
@@ -539,7 +549,7 @@ run_npz_model <- function(bc, params, ini, times, ice = FALSE){
     SED <- Fsed * Ased * 1.03^(y[2]-20) * (y[4]/Vh/(0.5/1000 + y[4]/Vh))* mult # mg/m2/d * m2 
     
     NEP <- 1.03^(y[1]-20) * Fnep * Ve * mult # mg/m3/d * m3
-    NEP <- 1.03^(y[1]-20) * (alpha1 * kg  * (y[9])/(y[9] + 2 * Ve /10e6) - alpha2 * kra) * y[5] * Ve * mult #
+    NEP <- 1.03^(y[1]-20) * (alpha1 * kg  * (y[9])/(y[9] + 2 * Ve /10e6) - alpha2 * kra) * y[5]  * mult #
     
     dOe <- ( NEP +
                ATM +
@@ -590,6 +600,11 @@ run_npz_model <- function(bc, params, ini, times, ice = FALSE){
   Uw <- approxfun(x = bc$Day, y = bc$Uw, method = "linear", rule = 2)
   vW <- approxfun(x = bc$Day, y = bc$vW, method = "linear", rule = 2)
   
+  if (new.diagn == TRUE){
+    if (file.exists('output.txt')){
+      file.remove('output.txt')
+    }
+  }
   # runge-kutta 4th order
   out <- ode(times = times, y = ini, func = TwoLayer_npz, parms = params, method = 'rk4')
   

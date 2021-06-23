@@ -4,7 +4,7 @@
 \alias{run_model}
 \title{Simple two-layer water temperature model}
 \usage{
-run_model(bc, params, ini, times, ice = FALSE)
+run_model(bc, params, ini, times, ice = FALSE, new.diagn = TRUE)
 }
 \arguments{
 \item{bc}{meteorological boundary conditions: day, shortwave radiation, air temperature, dew

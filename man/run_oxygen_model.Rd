@@ -4,7 +4,7 @@
 \alias{run_oxygen_model}
 \title{Simple two-layer water temperature and oxygen model}
 \usage{
-run_oxygen_model(bc, params, ini, times, ice = FALSE)
+run_oxygen_model(bc, params, ini, times, ice = FALSE, new.diagn = TRUE)
 }
 \arguments{
 \item{bc}{meteorological boundary conditions: day, shortwave radiation, air temperature, dew

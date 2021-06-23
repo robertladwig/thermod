@@ -268,11 +268,17 @@ ggsave(file='2L_visual_mendota_oxygen.png', go7, dpi = 300,width = 200,height = 
 # Fnep, Fsed, Ased, diffred 
 #kg, kra, Cgz, ksa, aca, epsilon, krz ksz, apa, apc, Fsedp, alpha1, alpha2
 test <- c(0.165, 0.15, 1.5*1e3, 1e-5, 0.04 * 1000, 0.6, 0.1 , 1e-5, 15, 0.3, -1500 / 1e4, 1e-15, 1e-15)#rep(1e-10,2))
+test <- c(0.9, 0.005, 1.5*1e3, 1e-5, 0.04 * 1000, 0.5, 0.1 , 1e-5, 1e-2, 1e-2, - 5000 / 1e4, 5e1, 5e1)#rep(1e-10,2))
+
+test <- c(0.5, 0.015, 1.5*1e3, 2e-1, 0.04 * 1000, 0.5, 0.1 , 2e-1, 1e-2, 5e-4,  -1500 / 1e4, 5e1, 5e1)#rep(1e-10,2))
 npz_parameters <- append(parameters, c(0.001 / 1000, 
-                                       100, 15000 * 1e4, 100,
-                                       test))
+                                       100, 25000 * 1e4, 100,
+                                       test))# c(0.001 / 1000, 
+# 100, 15000 * 1e4, 100,
+# test))
                         
 npz_parameters[19] = parameters[19] # calibration parameter
+npz_parameters[23] = npz_parameters[23] / 5# calibration parameter
 # simulation maximum length
 times <- seq(from = 1, to = max(boundary$Day), by = 1)
 # initial water temperatures
@@ -334,7 +340,6 @@ g1 <- ggplot(result) +
   scale_x_date(limits= as.Date(c(min(result$Date), max(result$Date))))+
   geom_point(data = obs_sfc, aes(x=as.Date(datetime), y=wtr_avg), col = 'orange') +
   theme_bw()+
-  # guides(col=guide_legend(title="Layer")) +
   theme(legend.position="bottom");g1
 g2 <- ggplot(result) +
   geom_line(aes(Date, WT_hyp), col = 'red') +
@@ -342,7 +347,6 @@ g2 <- ggplot(result) +
   theme_bw()+
   geom_point(data = obs_btm, aes(x=as.Date(datetime), y=wtr_avg), col = 'orange') +
   scale_x_date(limits= as.Date(c(min(result$Date), max(result$Date))))+
-  # guides(col=guide_legend(title="Layer")) +
   theme(legend.position="bottom");g2
 
 obs_sfc <- obs %>%
@@ -366,7 +370,6 @@ g3 <- ggplot(result) +
   geom_point(data = obs_sfc, aes(x=as.Date(datetime), y=do_avg), col = 'cyan') + # sfc
   scale_x_date(limits= as.Date(c(min(result$Date), max(result$Date))))+
   theme_bw()+
-  # guides(col=guide_legend(title="Layer")) +
   theme(legend.position="bottom");g3
 g4 <- ggplot(result) +
   geom_line(aes(Date, DO_hyp), col = 'blue') +
@@ -374,22 +377,36 @@ g4 <- ggplot(result) +
   scale_x_date(limits= as.Date(c(min(result$Date), max(result$Date))))+
   labs(x = 'Simulated Time', y = 'DO in g/m3')  +
   theme_bw()+
-  # guides(col=guide_legend(title="Layer")) +
   theme(legend.position="bottom");g4
+
+# microgramper liter
+obs_chla <- read.csv('obs_chla.csv')
+obs_chla2 = obs_chla %>%
+  filter(depth_range_m %in% c('0', '4', '8')) %>%
+  group_by(sampledate) %>%
+  summarise(mean(correct_chl_fluor)) %>%
+  rename(correct_chl_fluor = `mean(correct_chl_fluor)`)
+obs_chla1 = obs_chla %>%
+  filter(depth_range_m %in% c('0-8')) %>%
+  select(sampledate, correct_chl_fluor)
+obs_chla_cleaned = merge(obs_chla2, obs_chla1, by = 'sampledate')
+
+obs_sfc <- obs_chla1
+obs_sfc$time = match(as.Date(obs_chla1$sampledate), seq(as.Date(start_date), as.Date(stop_date), by = 'day'))
+
 
 g5 <- ggplot(result) +
   geom_line(aes(Date, PHY_epi), col = 'darkgreen') +
   labs(x = 'Simulated Time', y = 'Chla in g/m3')  +
+  geom_point(data = obs_sfc, aes(x=as.Date(sampledate), y=correct_chl_fluor/1000), col = 'lightgreen') + # sfc
   scale_x_date(limits= as.Date(c(min(result$Date), max(result$Date))))+
   theme_bw()+
-  # guides(col=guide_legend(title="Layer")) +
   theme(legend.position="bottom");g5
 g6 <- ggplot(result) +
   geom_line(aes(Date, PHY_hyp), col = 'darkgreen') +
   labs(x = 'Simulated Time', y = 'Chla in g/m3')  +
   scale_x_date(limits= as.Date(c(min(result$Date), max(result$Date))))+
   theme_bw()+
-  # guides(col=guide_legend(title="Layer")) +
   theme(legend.position="bottom");g6
 
 g7 <- ggplot(result) +
@@ -397,29 +414,45 @@ g7 <- ggplot(result) +
   labs(x = 'Simulated Time', y = 'C in g/m3')  +
   scale_x_date(limits= as.Date(c(min(result$Date), max(result$Date))))+
   theme_bw()+
-  # guides(col=guide_legend(title="Layer")) +
   theme(legend.position="bottom");g7
 g8 <- ggplot(result) +
   geom_line(aes(Date, ZOO_hyp), col = 'brown') +
   labs(x = 'Simulated Time', y = 'C in g/m3')  +
   scale_x_date(limits= as.Date(c(min(result$Date), max(result$Date))))+
   theme_bw()+
-  # guides(col=guide_legend(title="Layer")) +
   theme(legend.position="bottom");g8
+
+obs_nutrient <- read.csv('obs_nutrient.csv')
+obs_nutrient$datetime <- as.POSIXct(obs_nutrient$datetime)
+
+obs_sfc <- obs_nutrient %>%
+  filter(depth <= simple_therm_depth) %>%
+  mutate('date' = yday(datetime),
+         'sfc' = PHS_frp ) %>%
+  group_by(datetime) %>%
+  summarise('p_avg' = mean(sfc, na.rm = TRUE))
+obs_sfc$time = match(as.Date(obs_sfc$datetime), seq(as.Date(start_date), as.Date(stop_date), by = 'day'))
+obs_btm <- obs_nutrient %>%
+  filter(depth >= simple_therm_depth) %>%
+  mutate('date' = yday(datetime),
+         'btm' = PHS_frp ) %>%
+  group_by(datetime) %>%
+  summarise('p_avg' = mean(btm, na.rm = TRUE))
+obs_btm$time = match(as.Date(obs_btm$datetime), seq(as.Date(start_date), as.Date(stop_date), by = 'day'))
 
 g9 <- ggplot(result) +
   geom_line(aes(Date, P_epi), col = 'orange') +
   labs(x = 'Simulated Time', y = 'P in g/m3')  +
+  geom_point(data = obs_sfc, aes(x=as.Date(datetime), y=p_avg), col = 'yellow') + # sfc
   scale_x_date(limits= as.Date(c(min(result$Date), max(result$Date))))+
   theme_bw()+
-  # guides(col=guide_legend(title="Layer")) +
   theme(legend.position="bottom");g9
 g10 <- ggplot(result) +
   geom_line(aes(Date, P_hyp), col = 'orange') +
   labs(x = 'Simulated Time', y = 'P in g/m3')  +
+  geom_point(data = obs_btm, aes(x=as.Date(datetime), y=p_avg), col = 'yellow') +
   scale_x_date(limits= as.Date(c(min(result$Date), max(result$Date))))+
   theme_bw()+
-  # guides(col=guide_legend(title="Layer")) +
   theme(legend.position="bottom");g10
 
 library(patchwork)
@@ -429,10 +462,4 @@ g <- (g1 / g3 / g5 / g7 / g9) | (g2 / g4 / g6 / g8 / g10)  +
     subtitle = 'Epilimnion (left), Hypolimnion (right)',
     caption = 'Under development'
   ); g
-ggsave(file='2L_visual_mendota_nutrientfoodweb.png', g, dpi = 300,width = 200,height = 250, units = 'mm')
-
-
-
-
-
-
+ggsave(file='2L_visual_mendota_nutrientfoodweb.png', g, dpi = 300,width = 350,height = 250, units = 'mm')
