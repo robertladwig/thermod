@@ -546,10 +546,10 @@ run_npz_model <- function(bc, params, ini, times, ice = FALSE, new.diagn = TRUE)
     dTh <-  ((dV * At) / Vh) * (y[1] - y[2]) 
     
     
-    SED <- Fsed * Ased * 1.03^(y[2]-20) * (y[4]/Vh/(0.5/1000 + y[4]/Vh))* mult # mg/m2/d * m2 
+    SED <- Fsed * Ased * 1.08^(y[2]-20) * (y[4]/Vh/(0.5/1000 + y[4]/Vh))* mult # mg/m2/d * m2 
     
-    NEP <- 1.03^(y[1]-20) * Fnep * Ve * mult # mg/m3/d * m3
-    NEP <- 1.03^(y[1]-20) * (alpha1 * kg  * (y[9])/(y[9] + 2 * Ve /10e6) - alpha2 * kra) * y[5]  * mult #
+    NEP <- 1.08^(y[1]-20) * Fnep * Ve * mult # mg/m3/d * m3
+    NEP <- 1.08^(y[1]-20) * (alpha1 * kg  * (y[9])/(y[9] + 2 * Ve /10e6) - alpha2 * kra) * y[5]  * mult #
     
     dOe <- ( NEP +
                ATM +
@@ -559,16 +559,17 @@ run_npz_model <- function(bc, params, ini, times, ice = FALSE, new.diagn = TRUE)
     
     # 5 Pe, 6 Ph, 7 Ze, 8 Zh, 9 Ne, 10 Nh
     # kg, kra, Cgz, ksa, aca, epsilon, krz ksz, apa, apc, Fsedp, alpha1, alpha2
-    dPe <- ((kg  * (y[9])/(y[9] + 2 * Ve /10e6) - kra) * y[5] - Cgz / Ve * y[7] * y[5]  ) * 1.03^(y[1]-20) - ksa * y[5] 
-    dZe <- ((aca * epsilon * Cgz / Ve) * y[7] * y[5] - krz * y[7])* 1.03^(y[1]-20)  - ksz * y[7]
-    dNe <-( apa * (1- epsilon) * Cgz / Ve * y[7] * y[5] + apc * krz * y[7] - apa * (kg * (y[9])/(y[9] + 2 * Ve /10e6) - kra) * y[5]) * 1.03^(y[1]-20)+
+    #  2 * Ve /10e6
+    dPe <- ((kg  * (y[9])/(y[9] + 0.03) - kra) * y[5] - Cgz / Ve * y[7] * y[5]  ) * 1.08^(y[1]-20) - ksa * y[5] 
+    dZe <- ((aca * epsilon * Cgz / Ve) * y[7] * y[5] - krz * y[7])* 1.08^(y[1]-20)  - ksz * y[7]
+    dNe <-( apa * (1- epsilon) * Cgz / Ve * y[7] * y[5] + apc * krz * y[7] - apa * (kg * (y[9])/(y[9] + 0.03) - kra) * y[5]) * 1.08^(y[1]-20)+
       ((dV_oxy  * At)) * (y[10]/Vh - y[9]/Ve)
-    
-    dPh <- ((kg * (y[10])/(y[10] + 2 * Vh /10e6) - kra) * y[6] - Cgz / Vh * y[8] * y[6]) * 1.03^(y[2]-20) + ksa * y[5] - ksa * y[6] 
-    dZh <- ((aca * epsilon * Cgz / Vh) * y[8] * y[6] - krz * y[8]) * 1.03^(y[2]-20) + ksz * y[7] - ksz * y[8]
-    dNh <- (apa * (1- epsilon) * Cgz / Vh * y[8] * y[6] + apc * krz * y[8] - apa * (kg * (y[10])/(y[10] + 2 * Vh /10e6)  - kra) * y[6]) * 1.03^(y[2]-20)  +
+    #  2 * Vh /10e6
+    dPh <- ((kg * (y[10])/(y[10] +0.03) - kra) * y[6] - Cgz / Vh * y[8] * y[6]) * 1.08^(y[2]-20) + ksa * y[5] - ksa * y[6] 
+    dZh <- ((aca * epsilon * Cgz / Vh) * y[8] * y[6] - krz * y[8]) * 1.08^(y[2]-20) + ksz * y[7] - ksz * y[8]
+    dNh <- (apa * (1- epsilon) * Cgz / Vh * y[8] * y[6] + apc * krz * y[8] - apa * (kg * (y[10])/(y[10] + 0.03)  - kra) * y[6]) * 1.08^(y[2]-20)  +
       ((dV_oxy  * At)) * (y[9]/Ve - y[10]/Vh) -
-      Fsedp * Ased * 1.03^(y[2]-20) * (y[4]/Vh/(0.5/1000 + y[4]/Vh))* mult
+      Fsedp * Ased * 1.08^(y[2]-20) * (y[4]/Vh/(0.5/1000 + y[4]/Vh))* mult
     
     # diagnostic variables for plotting
     mix_e <- ((dV * At) / Ve) * (y[2] - y[1])
@@ -584,9 +585,19 @@ run_npz_model <- function(bc, params, ini, times, ice = FALSE, new.diagn = TRUE)
     E <- (E0 / (1 + a * Ri)^(3/2))
     Oflux_epi <- ((dV_oxy  * At)) * (y[4]/Vh - y[3]/Ve)
     Oflux_hypo <- ((dV_oxy * At)) * (y[3]/Ve - y[4]/Vh)
+    phy_growth = (kg  * (y[9])/(y[9] +0.03) - kra) * y[5]
+    phy_grazing = - Cgz / Ve * y[7] * y[5] 
+    zoo_grazing = (aca * epsilon * Cgz / Ve) * y[7] * y[5]
+    zoo_decay = - krz * y[7]
+    phy_to_nutr = apa * (1- epsilon) * Cgz / Ve * y[7] * y[5]
+    zoo_to_nutr = apc * krz * y[7] 
+    nutr_to_phy = - apa * (kg * (y[9])/(y[9] + 0.03) - kra) * y[5]
     
     write.table(matrix(c(qin, qout, mix_e, mix_h, sw, lw, water_lw, conv, evap, Rh,E, Ri, t, ice_param,
-                         ATM, NEP, SED, Oflux_epi, Oflux_hypo), nrow=1), 
+                         ATM, NEP, SED, Oflux_epi, Oflux_hypo,
+                         phy_growth,phy_grazing, zoo_grazing,
+                         zoo_decay, phy_to_nutr, zoo_to_nutr,
+                         nutr_to_phy), nrow=1), 
                 'output.txt', append = TRUE,
                 quote = FALSE, row.names = FALSE, col.names = FALSE)
     

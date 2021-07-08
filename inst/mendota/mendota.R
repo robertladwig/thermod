@@ -269,8 +269,10 @@ ggsave(file='2L_visual_mendota_oxygen.png', go7, dpi = 300,width = 200,height = 
 #kg, kra, Cgz, ksa, aca, epsilon, krz ksz, apa, apc, Fsedp, alpha1, alpha2
 test <- c(0.165, 0.15, 1.5*1e3, 1e-5, 0.04 * 1000, 0.6, 0.1 , 1e-5, 15, 0.3, -1500 / 1e4, 1e-15, 1e-15)#rep(1e-10,2))
 test <- c(0.9, 0.005, 1.5*1e3, 1e-5, 0.04 * 1000, 0.5, 0.1 , 1e-5, 1e-2, 1e-2, - 5000 / 1e4, 5e1, 5e1)#rep(1e-10,2))
-
 test <- c(0.5, 0.015, 1.5*1e3, 2e-1, 0.04 * 1000, 0.5, 0.1 , 2e-1, 1e-2, 5e-4,  -1500 / 1e4, 5e1, 5e1)#rep(1e-10,2))
+#1.1
+test <- c(1.0, 0.15, 1.3*1e1, 1e-1, 0.04 * 1e2, 0.5, 1e-2 , 1e-1, 1e-2, 5e-4,  -1500 / 1e4, 5e1, 5e1)#rep(1e-10,2))
+# test <- c(0.5, 0.015, 1.5*1e3, 2e-1, 0.04 * 1000, 0.5, 0.1 , 2e-1, 1e-2, 5e-4,  -1500 / 1e4, 3e1, 3e1)
 npz_parameters <- append(parameters, c(0.001 / 1000, 
                                        100, 25000 * 1e4, 100,
                                        test))# c(0.001 / 1000, 
@@ -294,6 +296,43 @@ if (file.exists('output.txt')){
 
 ice_on = TRUE # ice "simulation" on or off?
 out <- run_npz_model(bc = boundary, params = npz_parameters, ini = yini, times = times, ice = ice_on)
+
+output <- read.table('output.txt')
+#qin, qout, mix_e, mix_h, sw, lw, water_lw, conv, evap, Rh,E, Ri, t, ice_param,
+# ATM, NEP, SED, Oflux_epi, Oflux_hypo,
+# phy_growth,phy_grazing, zoo_grazing,
+# zoo_decay, phy_to_nutr, zoo_to_nutr,
+# nutr_to_phy)
+output <- data.frame('qin'=output[,1],'qout'=output[,2],'mix_e'=output[,3],'mix_h'=output[,4],
+                     'sw'=output[,5],'lw'=output[,6],'water_lw'=output[,7],'conv'=output[,8],
+                     'evap'=output[,9], 'Rh' = output[,10],
+                     'entrain' = output[,11], 'Ri' = output[,12],'time' = output[,13],
+                     'ice' = output[,14], 'Fatm' = output[,15], 'Fnep' = output[,16],
+                     'Fsed' = output[,17], 'entr_epi' = output[,18], 'entr_hypo' = output[,19],
+                     'phy_growth' = output[,20], 'phy_grazing' = output[,21], 
+                     'zoo_grazing' =output[,22], 'zoo_decay' = output[,23],
+                     'phy_to_nutr' = output[,24], 'zoo_to_nutr' = output[,25],
+                     'nutr_to_phy' = output[,26])
+ggplot(output) +
+  geom_line(aes(time, phy_growth + phy_grazing, col = 'phy')) +
+  geom_line(aes(time, zoo_grazing + zoo_decay, col = 'zoo')) +
+  geom_line(aes(time, phy_to_nutr + zoo_to_nutr - nutr_to_phy, col = 'nutr')) +
+  xlim(1000,1250)
+
+ggplot(output) +
+  geom_line(aes(time, phy_grazing , col = 'phy')) +
+  # geom_line(aes(time, zoo_grazing / npz_parameters[28] / npz_parameters[29], col = 'zoo')) +
+  # geom_line(aes(time, phy_to_nutr / npz_parameters[32] / (1- npz_parameters[29]), col = 'nutr')) +
+  geom_line(aes(time, phy_growth , col = 'phy_growth')) +
+  xlim(1000,1250) +
+  ylim(-2e11, 2e11)
+
+ggplot(output) +
+  geom_line(aes(time, phy_growth , col = 'phy')) +
+  geom_line(aes(time, zoo_decay / npz_parameters[28] / npz_parameters[29], col = 'zoo')) +
+  geom_line(aes(time, phy_to_nutr / npz_parameters[32] / (1- npz_parameters[29]), col = 'nutr'))# +
+  #xlim(1000,1250)
+  # geom_line(aes(time, phy_growth, col ='phy_growth'))
 
 result <- data.frame('Time' = out[,1],
                      'WT_epi' = out[,2], 'WT_hyp' = out[,3],
@@ -463,3 +502,4 @@ g <- (g1 / g3 / g5 / g7 / g9) | (g2 / g4 / g6 / g8 / g10)  +
     caption = 'Under development'
   ); g
 ggsave(file='2L_visual_mendota_nutrientfoodweb.png', g, dpi = 300,width = 350,height = 250, units = 'mm')
+
