@@ -267,20 +267,22 @@ ggsave(file='2L_visual_mendota_oxygen.png', go7, dpi = 300,width = 200,height = 
 # NPZ tests
 # Fnep, Fsed, Ased, diffred 
 #kg, kra, Cgz, ksa, aca, epsilon, krz ksz, apa, apc, Fsedp, alpha1, alpha2
-test <- c(0.165, 0.15, 1.5*1e3, 1e-5, 0.04 * 1000, 0.6, 0.1 , 1e-5, 15, 0.3, -1500 / 1e4, 1e-15, 1e-15)#rep(1e-10,2))
-test <- c(0.9, 0.005, 1.5*1e3, 1e-5, 0.04 * 1000, 0.5, 0.1 , 1e-5, 1e-2, 1e-2, - 5000 / 1e4, 5e1, 5e1)#rep(1e-10,2))
-test <- c(0.5, 0.015, 1.5*1e3, 2e-1, 0.04 * 1000, 0.5, 0.1 , 2e-1, 1e-2, 5e-4,  -1500 / 1e4, 5e1, 5e1)#rep(1e-10,2))
+#test <- c(0.165, 0.15, 1.5*1e3, 1e-5, 0.04 * 1000, 0.6, 0.1 , 1e-5, 15, 0.3, -1500 / 1e4, 1e-15, 1e-15)#rep(1e-10,2))
+# test <- c(0.9, 0.005, 1.5*1e3, 1e-5, 0.04 * 1000, 0.5, 0.1 , 1e-5, 1e-2, 1e-2, - 5000 / 1e4, 5e1, 5e1)#rep(1e-10,2))
+# test <- c(0.5, 0.015, 1.5*1e3, 2e-1, 0.04 * 1000, 0.5, 0.1 , 2e-1, 1e-2, 5e-4,  -1500 / 1e4, 5e1, 5e1)#rep(1e-10,2))
 #1.1
-test <- c(1.0, 0.15, 1.3*1e1, 1e-1, 0.04 * 1e2, 0.5, 1e-2 , 1e-1, 1e-2, 5e-4,  -1500 / 1e4, 5e1, 5e1)#rep(1e-10,2))
+# test <- c(1.0, 0.15, 1.3*1e1, 1e-1, 0.04 * 1e2, 0.5, 1e-2 , 1e-1, 1e-1, 5e-4,  -1500 / 1e4, 5e1, 5e1)#rep(1e-10,2))
 # test <- c(0.5, 0.015, 1.5*1e3, 2e-1, 0.04 * 1000, 0.5, 0.1 , 2e-1, 1e-2, 5e-4,  -1500 / 1e4, 3e1, 3e1)
+
+test <- c(0.165, 0.15, 1.5*1e3, 1e-5, 0.04 * 1000, 0.6, 0.1 , 1e-5, 15, 0.35, -3000 / 1e4, 3e1, 3e1)
 npz_parameters <- append(parameters, c(0.001 / 1000, 
                                        100, 25000 * 1e4, 100,
                                        test))# c(0.001 / 1000, 
 # 100, 15000 * 1e4, 100,
 # test))
-                        
+                
 npz_parameters[19] = parameters[19] # calibration parameter
-npz_parameters[23] = npz_parameters[23] / 5# calibration parameter
+npz_parameters[23] = wq_parameters[23] * 1e-1 * 2.5#npz_parameters[23] / 5#5# calibration parameter
 # simulation maximum length
 times <- seq(from = 1, to = max(boundary$Day), by = 1)
 # initial water temperatures

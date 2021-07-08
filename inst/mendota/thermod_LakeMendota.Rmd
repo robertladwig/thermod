@@ -214,16 +214,14 @@ $F_{NEP} = \theta^{T_{epi}-20}(\alpha_1*k_g\frac{P_{epi}}{k_{1/2} + P_{epi}}-\al
 These additional layers of complexity result in a vast increase of additional fitting parameters, as well as a more profound effect of the initial conditions on the model run.
 
 ```{r npz,  fig.width = 10, fig.height= 12}
-npz_specific <- c(0.5, 0.015, 1.5*1e3, 2e-1, 0.04 * 1000, 0.5, 0.1 , 2e-1, 1e-2, 5e-4,  -1500 / 1e4, 3e1, 3e1)
+npz_specific <- c(0.165, 0.15, 1.5*1e3, 1e-5, 0.04 * 1000, 0.6, 0.1 , 1e-5, 15, 0.35, -3000 / 1e4, 3e1, 3e1)
 
 npz_parameters <- append(parameters, c(0.001 / 1000, 
                                        100, 25000 * 1e4, 100,
                                        npz_specific))# c(0.001 / 1000, 
-# 100, 15000 * 1e4, 100,
-# test))
                         
 npz_parameters[19] = parameters[19] # calibration parameter
-npz_parameters[23] = npz_parameters[23] / 5# calibration parameter
+npz_parameters[23] = wq_parameters[23] * 1e-1 * 2.5 # calibration parameter
 
 # simulation maximum length
 times <- seq(from = 1, to = max(boundary$Day), by = 1)
@@ -409,8 +407,8 @@ ggplot(result) +
   geom_line(aes(Date, scale(ZOO_epi), col = 'ZOO')) +
   geom_line(aes(Date, scale(P_epi), col = 'P')) +
   scale_color_manual(values=c("blue", "orange", "darkgreen",'red', 'brown')) +
-  ylim(-2.2, 2.2)+
-  scale_x_date(limits= as.Date(c('2000-01-01', '2003-12-31')))+
+  ylim(-2.2, 3.2)+
+  scale_x_date(limits= as.Date(c('2000-01-01', '2002-12-31')))+
   guides(col=guide_legend(title="")) +
   theme_bw() +
   theme(
