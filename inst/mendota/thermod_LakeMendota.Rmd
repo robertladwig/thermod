@@ -214,7 +214,7 @@ $F_{NEP} = \theta^{T_{epi}-20}(\alpha_1*k_g\frac{P_{epi}}{k_{1/2} + P_{epi}}-\al
 These additional layers of complexity result in a vast increase of additional fitting parameters, as well as a more profound effect of the initial conditions on the model run.
 
 ```{r npz,  fig.width = 10, fig.height= 12}
-npz_specific <- c(0.165, 0.15, 1.5*1e3, 1e-5, 0.04 * 1000, 0.6, 0.1 , 1e-5, 15, 0.35, -3000 / 1e4, 3e1, 3e1)
+npz_specific <-c(0.165, 0.15, 1.5*1e3, 1e-5, 0.04 * 1000, 0.6, 0.1 , 1e-5, 15, 0.15, -10000 / 1e4, 3e1, 3e1,1000)
 
 npz_parameters <- append(parameters, c(0.001 / 1000, 
                                        100, 25000 * 1e4, 100,

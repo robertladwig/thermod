@@ -477,6 +477,7 @@ run_npz_model <- function(bc, params, ini, times, ice = FALSE, new.diagn = TRUE)
   Fsedp <- params[34] # mg P per cm3 per day
   alpha1 <- params[35] # dimensionless
   alpha2 <- params[36] # dimensionless
+  diffredp <- params[37]
   
   
   TwoLayer_npz <- function(t, y, parms){
@@ -495,10 +496,12 @@ run_npz_model <- function(bc, params, ini, times, ice = FALSE, new.diagn = TRUE)
     if (rho_e > rho_h){
       dV = 100 * calParam
       dV_oxy = dV/diffred
+      dV_pho = dV/diffredp
       mult = 1.#1/1000
     } else {
       dV <- (E0 / (1 + a * Ri)^(3/2))/(Ht/100) * (86400/10000) ** calParam
       dV_oxy = dV/diffred
+      dV_pho = dV/diffredp
       mult = 1
     }
     U10 <- wind.scale.base(vW(t), wnd.z = 10)
@@ -560,15 +563,17 @@ run_npz_model <- function(bc, params, ini, times, ice = FALSE, new.diagn = TRUE)
     # 5 Pe, 6 Ph, 7 Ze, 8 Zh, 9 Ne, 10 Nh
     # kg, kra, Cgz, ksa, aca, epsilon, krz ksz, apa, apc, Fsedp, alpha1, alpha2
     #  2 * Ve /10e6
-    dPe <- ((kg  * (y[9])/(y[9] + 0.03) - kra) * y[5] - Cgz / Ve * y[7] * y[5]  ) * 1.08^(y[1]-20) - ksa * y[5] 
+    #rnorm(n = 1, mean = 0.165, sd = 0.0001)
+    kg_rand = rnorm(n = 1, kg, sd = 0.1)
+    dPe <- ((kg_rand  * (y[9])/(y[9] + 0.03) - kra) * y[5] - Cgz / Ve * y[7] * y[5]  ) * 1.08^(y[1]-20) - ksa * y[5] 
     dZe <- ((aca * epsilon * Cgz / Ve) * y[7] * y[5] - krz * y[7])* 1.08^(y[1]-20)  - ksz * y[7]
-    dNe <-( apa * (1- epsilon) * Cgz / Ve * y[7] * y[5] + apc * krz * y[7] - apa * (kg * (y[9])/(y[9] + 0.03) - kra) * y[5]) * 1.08^(y[1]-20)+
-      ((dV_oxy  * At)) * (y[10]/Vh - y[9]/Ve)
+    dNe <-( apa * (1- epsilon) * Cgz / Ve * y[7] * y[5] + apc * krz * y[7] - apa * (kg_rand * (y[9])/(y[9] + 0.03) - kra) * y[5]) * 1.08^(y[1]-20)+
+      ((dV_pho  * At)) * (y[10]/Vh - y[9]/Ve)
     #  2 * Vh /10e6
-    dPh <- ((kg * (y[10])/(y[10] +0.03) - kra) * y[6] - Cgz / Vh * y[8] * y[6]) * 1.08^(y[2]-20) + ksa * y[5] - ksa * y[6] 
+    dPh <- ((kg_rand * (y[10])/(y[10] +0.03) - kra) * y[6] - Cgz / Vh * y[8] * y[6]) * 1.08^(y[2]-20) + ksa * y[5] - ksa * y[6] 
     dZh <- ((aca * epsilon * Cgz / Vh) * y[8] * y[6] - krz * y[8]) * 1.08^(y[2]-20) + ksz * y[7] - ksz * y[8]
-    dNh <- (apa * (1- epsilon) * Cgz / Vh * y[8] * y[6] + apc * krz * y[8] - apa * (kg * (y[10])/(y[10] + 0.03)  - kra) * y[6]) * 1.08^(y[2]-20)  +
-      ((dV_oxy  * At)) * (y[9]/Ve - y[10]/Vh) -
+    dNh <- (apa * (1- epsilon) * Cgz / Vh * y[8] * y[6] + apc * krz * y[8] - apa * (kg_rand * (y[10])/(y[10] + 0.03)  - kra) * y[6]) * 1.08^(y[2]-20)  +
+      ((dV_pho  * At)) * (y[9]/Ve - y[10]/Vh) -
       Fsedp * Ased * 1.08^(y[2]-20) * (y[4]/Vh/(0.5/1000 + y[4]/Vh))* mult
     
     # diagnostic variables for plotting
