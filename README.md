@@ -7,6 +7,7 @@ thermod allows you to
 - simulate water temepratures in the epilimnion and hypolimnion as a function of meteorological forcing data
 - simulate if the lake is stratified or mixed based on modeled water temperatures
 - (experimental) simulate dissolved oxygen concentration in the epilimnion and hypolimnion
+- (experimental) simulate food web dynamics (nutrients-phytoplankton-zooplankton)
 
 You can install the package in R using these commands:
 ```
